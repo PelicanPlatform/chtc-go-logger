@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -15,10 +16,38 @@ import (
 var (
 	baseSlogger  *slog.Logger
 	initSlogOnce sync.Once
+	errChan      chan LogError
 )
+
+type LogError struct {
+	Record slog.Record
+	Err    error
+}
+
+// TODO viper config or some such thing
+
+type TeeHandlerConfig struct {
+	fileLogRoot string
+	consoleLog  io.Writer
+	logOpts     slog.HandlerOptions
+}
+
+func NewTeeHandlerConfig() *TeeHandlerConfig {
+	rootDir, exists := os.LookupEnv("LOG_ROOT")
+	if !exists {
+		rootDir = "/tmp"
+	}
+
+	return &TeeHandlerConfig{
+		fileLogRoot: rootDir,
+		consoleLog:  os.Stdout,
+		logOpts:     FatalPrintOpts,
+	}
+}
 
 type TeeHandler struct {
 	handlers []slog.Handler
+	errChan  chan LogError
 }
 
 const FatalLevel = slog.Level(12)
@@ -37,22 +66,23 @@ var FatalPrintOpts = slog.HandlerOptions{
 
 // Preconfigure the desired "child" loggers to CHTC standards
 // TODO develop CHTC standards
-func NewConsoleFileTeeHandler(console io.Writer, filepath string, consoleOpts *slog.HandlerOptions, fileOpts *slog.HandlerOptions) *TeeHandler {
-	consoleLogger := slog.New(slog.NewTextHandler(console, consoleOpts))
+func NewConsoleFileTeeHandler(config *TeeHandlerConfig, errChan chan LogError) *TeeHandler {
+	consoleLogger := slog.New(slog.NewTextHandler(config.consoleLog, &config.logOpts))
 	logrotate := &lumberjack.Logger{
-		Filename:   filepath,
+		Filename:   filepath.Join(config.fileLogRoot, "log.log"),
 		MaxSize:    500,
 		MaxBackups: 3,
 		MaxAge:     28,
 		Compress:   true,
 	}
-	fileLogger := slog.New(slog.NewJSONHandler(logrotate, fileOpts))
+	fileLogger := slog.New(slog.NewJSONHandler(logrotate, &config.logOpts))
 
 	return &TeeHandler{
 		handlers: []slog.Handler{
 			consoleLogger.Handler(),
 			fileLogger.Handler(),
 		},
+		errChan: errChan,
 	}
 }
 
@@ -72,7 +102,14 @@ func (h *TeeHandler) Handle(ctx context.Context, r slog.Record) error {
 	for _, handler := range h.handlers {
 		errs = append(errs, handler.Handle(ctx, r))
 	}
-	return errors.Join(errs...)
+	err := errors.Join(errs...)
+	if err != nil {
+		h.errChan <- LogError{
+			Err:    err,
+			Record: r,
+		}
+	}
+	return err
 }
 
 // Return a new struct that contains copies of both handlers
@@ -81,7 +118,9 @@ func (h *TeeHandler) WithGroup(name string) slog.Handler {
 	for _, handler := range h.handlers {
 		newHandlers = append(newHandlers, handler.WithGroup(name))
 	}
-	return &TeeHandler{handlers: newHandlers}
+	// TODO does it make sense to share the error channel among all children
+	// of the base logger?
+	return &TeeHandler{handlers: newHandlers, errChan: h.errChan}
 }
 
 // Return a new struct that contains copies of both handlers
@@ -90,13 +129,14 @@ func (h *TeeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	for _, handler := range h.handlers {
 		newHandlers = append(newHandlers, handler.WithAttrs(attrs))
 	}
-	return &TeeHandler{handlers: newHandlers}
+	return &TeeHandler{handlers: newHandlers, errChan: h.errChan}
 }
 
 func LogBase() *slog.Logger {
 	initSlogOnce.Do(func() {
 		fmt.Println("Base Slogger initializing...")
-		baseSlogger = slog.New(NewConsoleFileTeeHandler(os.Stdout, "/mnt/tmpfs/slog-logs.log", &FatalPrintOpts, &FatalPrintOpts))
+		errChan = make(chan LogError)
+		baseSlogger = slog.New(NewConsoleFileTeeHandler(NewTeeHandlerConfig(), errChan))
 	})
 
 	if baseSlogger == nil {
@@ -105,6 +145,10 @@ func LogBase() *slog.Logger {
 	}
 
 	return baseSlogger
+}
+
+func BaseErrChan() chan LogError {
+	return errChan
 }
 
 func LogWith(args ...any) *slog.Logger {
