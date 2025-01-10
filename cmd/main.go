@@ -9,23 +9,12 @@ import (
 
 var log = logger.LogWith(slog.String("package", "main"))
 
-var doneChan = make(chan bool)
-
-func pollForLogErrors() {
-	for {
-		select {
-		case err := <-logger.BaseErrChan():
-			if err.Err != nil {
-				// Can't log, just print it!
-				fmt.Printf("Error: %v\n", err.Err)
-			}
-		case <-doneChan:
-		}
-	}
-}
-
 func main() {
-	go pollForLogErrors()
+	defer logger.StopErrorHandlers()
+	logger.AddErrHandler(func(le logger.LogError) {
+		// Can't log the error, just print it!
+		fmt.Printf("Error: %v\n", le.Err)
+	})
+
 	log.Info("Hello, world!")
-	doneChan <- true
 }

@@ -17,7 +17,11 @@ var (
 	baseSlogger  *slog.Logger
 	initSlogOnce sync.Once
 	errChan      chan LogError
+	doneChan     chan bool
+	errHandlers  []ErrHandler
 )
+
+type ErrHandler func(LogError)
 
 type LogError struct {
 	Record slog.Record
@@ -132,10 +136,26 @@ func (h *TeeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &TeeHandler{handlers: newHandlers, errChan: h.errChan}
 }
 
+func pollForLogErrors() {
+	for {
+		select {
+		case err := <-errChan:
+			if err.Err != nil {
+				for _, handler := range errHandlers {
+					handler(err)
+				}
+			}
+		case <-doneChan:
+		}
+	}
+}
+
 func LogBase() *slog.Logger {
 	initSlogOnce.Do(func() {
 		fmt.Println("Base Slogger initializing...")
 		errChan = make(chan LogError)
+		doneChan = make(chan bool)
+		go pollForLogErrors()
 		baseSlogger = slog.New(NewConsoleFileTeeHandler(NewTeeHandlerConfig(), errChan))
 	})
 
@@ -147,8 +167,14 @@ func LogBase() *slog.Logger {
 	return baseSlogger
 }
 
-func BaseErrChan() chan LogError {
-	return errChan
+// Add a listener to the list of logging error handlers
+func AddErrHandler(handler ErrHandler) {
+	// TODO remove errHandlers
+	errHandlers = append(errHandlers, handler)
+}
+
+func StopErrorHandlers() {
+	doneChan <- true
 }
 
 func LogWith(args ...any) *slog.Logger {
