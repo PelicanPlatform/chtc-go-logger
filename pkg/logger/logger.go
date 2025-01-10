@@ -173,6 +173,7 @@ func AddErrHandler(handler ErrHandler) {
 	errHandlers = append(errHandlers, handler)
 }
 
+// End the goroutine that delegates log error handling work
 func StopErrorHandlers() {
 	doneChan <- true
 }
@@ -188,6 +189,7 @@ func LogFatal(log *slog.Logger, msg string, err error, args ...any) {
 	os.Exit(1)
 }
 
+// Helper function that adds an error-typed key/value pair to an slog message
 func Error(err error) slog.Attr {
 	return slog.Any("error", err)
 }
