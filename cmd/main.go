@@ -20,12 +20,29 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/chtc/chtc-go-logger/logger"
 )
 
+// Set up baisc error handling (fall back to stdout) -
+// it might make sense to provide an in-api wrapper for this?
+func logErrorPoller(done <-chan bool) {
+	for {
+		select {
+		case err := <-logger.GetLogErrorWatcher():
+			fmt.Printf("An error occurred during logging! Falling back to stdout: %v\n", err.Err)
+		case <-done:
+			return
+		}
+	}
+}
 func main() {
+
+	doneChan := make(chan bool)
+	go logErrorPoller(doneChan)
+
 	// Example 1: Logging Without Context
 	nonContextLogger := logger.NewLogger()
 	nonContextLogger.Info("Hello, world!",
@@ -64,4 +81,5 @@ func main() {
 		slog.String("endpoint", "/api/v1/data"),
 		slog.String("method", "POST"),
 	)
+	doneChan <- true
 }

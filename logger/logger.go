@@ -35,12 +35,18 @@ var (
 	loggerConfig   *config.Config // Global configuration for the logger
 	consoleHandler slog.Handler   // Shared console handler
 	fileHandler    slog.Handler   // Shared file handler
+	errChan        chan LogError  // Channel to broadcast errors that occur while logging
 )
 
 // LoggerOptions defines options for enabling/disabling handlers
 type LoggerOptions struct {
 	EnableConsole bool // Whether to enable console logging
 	EnableFile    bool // Whether to enable file logging
+}
+
+type LogError struct {
+	Err    error
+	Record slog.Record
 }
 
 // Define a custom type for context keys
@@ -77,9 +83,9 @@ func init() {
 			Compress:   true,
 		}, nil)
 	}
-}
 
-// --- Non-Context Logger ---
+	errChan = make(chan LogError, 1)
+}
 
 // NewLogger creates a logger based on LoggerOptions
 func NewLogger(options ...LoggerOptions) *slog.Logger {
@@ -106,7 +112,8 @@ func NewLogger(options ...LoggerOptions) *slog.Logger {
 		handlers = append(handlers, fileHandler)
 	}
 
-	return slog.New(&LogDispatcher{handlers: handlers})
+	dispatcher := &LogDispatcher{handlers: handlers}
+	return slog.New(&LogErrorForwarder{handler: dispatcher, errChan: errChan})
 }
 
 // --- Context-Aware Logger ---
@@ -222,6 +229,50 @@ func (d *LogDispatcher) WithAttrs(attrs []slog.Attr) slog.Handler {
 		newHandlers[i] = handler.WithAttrs(attrs)
 	}
 	return &LogDispatcher{handlers: newHandlers}
+}
+
+// LogErrorForwarder forwards errors that occur during its child
+// handlers' logging to an error channel
+type LogErrorForwarder struct {
+	handler slog.Handler
+	errChan chan LogError
+}
+
+// Implementation of slog.Handler on LogErrorForwarder
+func (ef *LogErrorForwarder) Enabled(ctx context.Context, level slog.Level) bool {
+	return ef.handler.Enabled(ctx, level)
+}
+
+func (ef *LogErrorForwarder) Handle(ctx context.Context, r slog.Record) error {
+	if err := ef.handler.Handle(ctx, r); err != nil {
+		// TODO this will block if the user experiences an error log before setting up
+		// a receiver for the channel, do we want to work around that in some way?
+		ef.errChan <- LogError{
+			Err:    err,
+			Record: r,
+		}
+		return err
+	}
+	return nil
+}
+
+func (ef *LogErrorForwarder) WithGroup(name string) slog.Handler {
+	return &LogErrorForwarder{
+		handler: ef.handler.WithGroup(name),
+		errChan: ef.errChan,
+	}
+}
+
+func (ef *LogErrorForwarder) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &LogErrorForwarder{
+		handler: ef.handler.WithAttrs(attrs),
+		errChan: ef.errChan,
+	}
+}
+
+// Return a read-only view of the log error channel
+func GetLogErrorWatcher() <-chan LogError {
+	return errChan
 }
 
 // ColorConsoleHandler provides color-coded console logging

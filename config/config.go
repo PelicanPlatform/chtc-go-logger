@@ -27,9 +27,9 @@ type FileOutputConfig struct {
 }
 
 type Config struct {
-	LogLevel      string              `mapstructure:"log_level"`      // Log level (e.g., DEBUG, INFO, WARN, ERROR)
-	ConsoleOutput ConsoleOutputConfig `mapstructure:"console_output"` // Console output settings
-	FileOutput    FileOutputConfig    `mapstructure:"file_output"`    // File output settings
+	LogLevel      string               `mapstructure:"log_level"`      // Log level (e.g., DEBUG, INFO, WARN, ERROR)
+	ConsoleOutput *ConsoleOutputConfig `mapstructure:"console_output"` // Console output settings
+	FileOutput    *FileOutputConfig    `mapstructure:"file_output"`    // File output settings
 }
 
 // LoadConfig loads and merges the configuration in this order:
@@ -77,28 +77,17 @@ func ApplyOverrides(config, overrides *Config) {
 	if overrides.LogLevel != "" {
 		config.LogLevel = overrides.LogLevel
 	}
-	if overrides.ConsoleOutput.Enabled {
+	if overrides.ConsoleOutput != nil {
 		config.ConsoleOutput.Enabled = overrides.ConsoleOutput.Enabled
-	}
-	if overrides.ConsoleOutput.JSONOutput {
 		config.ConsoleOutput.JSONOutput = overrides.ConsoleOutput.JSONOutput
-	}
-	if overrides.ConsoleOutput.Colors {
 		config.ConsoleOutput.Colors = overrides.ConsoleOutput.Colors
 	}
-	if overrides.FileOutput.Enabled {
+
+	if overrides.FileOutput != nil {
 		config.FileOutput.Enabled = overrides.FileOutput.Enabled
-	}
-	if overrides.FileOutput.FilePath != "" {
 		config.FileOutput.FilePath = overrides.FileOutput.FilePath
-	}
-	if overrides.FileOutput.MaxFileSize != 0 {
 		config.FileOutput.MaxFileSize = overrides.FileOutput.MaxFileSize
-	}
-	if overrides.FileOutput.MaxBackups != 0 {
 		config.FileOutput.MaxBackups = overrides.FileOutput.MaxBackups
-	}
-	if overrides.FileOutput.MaxAgeDays != 0 {
 		config.FileOutput.MaxAgeDays = overrides.FileOutput.MaxAgeDays
 	}
 }
