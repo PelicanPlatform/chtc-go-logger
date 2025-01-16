@@ -8,120 +8,166 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/chtc/chtc-go-logger/config"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
-	baseSlogger  *slog.Logger
-	initSlogOnce sync.Once
-	loggerConfig *config.Config // Global configuration for the logger
+	loggerConfig   *config.Config // Global configuration for the logger
+	consoleHandler slog.Handler   // Shared console handler
+	fileHandler    slog.Handler   // Shared file handler
 )
 
-// init is called when the package is imported.
+// LoggerOptions defines options for enabling/disabling handlers
+type LoggerOptions struct {
+	EnableConsole bool // Whether to enable console logging
+	EnableFile    bool // Whether to enable file logging
+}
+
+// Define a custom type for context keys
+type contextKey string
+
+// Define a constant for the log attributes key
+const LogAttrsKey contextKey = "logAttrs"
+
 func init() {
-	// Automatically load the configuration
 	var err error
-	loggerConfig, err = config.LoadConfig("", nil) // Load defaults with no external file or overrides
+	loggerConfig, err = config.LoadConfig("", nil) // Load defaults
 	if err != nil {
 		panic("Failed to load logger configuration: " + err.Error())
 	}
 
-	// Initialize the base logger
-	initSlogOnce.Do(func() {
-		baseSlogger = slog.New(ConsoleFileLogger(loggerConfig))
-	})
-}
-
-func mergeConfigs(baseConfig, partialConfig *config.Config) *config.Config {
-	merged := *baseConfig // Start with a copy of the base configuration
-
-	if partialConfig != nil {
-		config.ApplyOverrides(&merged, partialConfig)
+	// Initialize shared console handler
+	if loggerConfig.ConsoleOutput.Enabled {
+		if loggerConfig.ConsoleOutput.JSONOutput {
+			consoleHandler = slog.NewJSONHandler(os.Stdout, nil)
+		} else if loggerConfig.ConsoleOutput.Colors {
+			consoleHandler = &ColorConsoleHandler{output: os.Stdout}
+		} else {
+			consoleHandler = slog.NewTextHandler(os.Stdout, nil)
+		}
 	}
 
-	return &merged
+	// Initialize shared file handler
+	if loggerConfig.FileOutput.Enabled {
+		fileHandler = slog.NewJSONHandler(&lumberjack.Logger{
+			Filename:   loggerConfig.FileOutput.FilePath,
+			MaxSize:    loggerConfig.FileOutput.MaxFileSize,
+			MaxBackups: loggerConfig.FileOutput.MaxBackups,
+			MaxAge:     loggerConfig.FileOutput.MaxAgeDays,
+			Compress:   true,
+		}, nil)
+	}
 }
 
-// ConsoleFileLogger initializes the logger with console and file output based on config
-func ConsoleFileLogger(partialConfig *config.Config) *LogDispatcher {
-	// Merge the partial configuration with the global configuration
-	finalConfig := mergeConfigs(loggerConfig, partialConfig)
+// --- Non-Context Logger ---
+
+// NewLogger creates a logger based on LoggerOptions
+func NewLogger(options ...LoggerOptions) *slog.Logger {
+	// Set default options
+	opts := LoggerOptions{
+		EnableConsole: true,
+		EnableFile:    true,
+	}
+
+	// If options are provided, override the defaults
+	if len(options) > 0 {
+		opts = options[0]
+	}
 
 	var handlers []slog.Handler
 
-	// Console Handler
-	if finalConfig.ConsoleOutput.Enabled {
-		if finalConfig.ConsoleOutput.JSONOutput {
-			handlers = append(handlers, slog.NewJSONHandler(os.Stdout, nil))
-		} else if finalConfig.ConsoleOutput.Colors {
-			handlers = append(handlers, &ColorConsoleHandler{output: os.Stdout})
-		} else {
-			handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
-		}
+	// Add console handler if enabled
+	if opts.EnableConsole && consoleHandler != nil {
+		handlers = append(handlers, consoleHandler)
 	}
 
-	// File Handler
-	if finalConfig.FileOutput.Enabled {
-		logrotate := &lumberjack.Logger{
-			Filename:   finalConfig.FileOutput.FilePath,
-			MaxSize:    finalConfig.FileOutput.MaxFileSize,
-			MaxBackups: finalConfig.FileOutput.MaxBackups,
-			MaxAge:     finalConfig.FileOutput.MaxAgeDays,
-			Compress:   true,
-		}
-		handlers = append(handlers, slog.NewJSONHandler(logrotate, nil))
+	// Add file handler if enabled
+	if opts.EnableFile && fileHandler != nil {
+		handlers = append(handlers, fileHandler)
 	}
 
-	return &LogDispatcher{handlers: handlers}
+	return slog.New(&LogDispatcher{handlers: handlers})
 }
 
-// ColorConsoleHandler provides color-coded console logging
-type ColorConsoleHandler struct {
-	output io.Writer
+// --- Context-Aware Logger ---
+
+// ContextAwareLogger wraps slog.Logger to support context-based logging
+type ContextAwareLogger struct {
+	logger *slog.Logger
 }
 
-func (h *ColorConsoleHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return true
+// NewContextAwareLogger creates a logger with context support by internally calling NewLogger
+func NewContextAwareLogger(options ...LoggerOptions) *ContextAwareLogger {
+	return &ContextAwareLogger{logger: NewLogger(options...)}
 }
 
-func (h *ColorConsoleHandler) Handle(ctx context.Context, r slog.Record) error {
-	// Fetch the color for the log level; default to reset if not found
-	levelColor, ok := levelColors[r.Level]
+// Log logs a message at the specified level with context attributes and additional attributes
+func (l *ContextAwareLogger) Log(ctx context.Context, level slog.Level, msg string, attrs ...slog.Attr) {
+	// Extract attributes from context
+	contextAttrs := extractContextAttributes(ctx)
+
+	// Merge context attributes with additional attributes
+	finalAttrs := append(contextAttrs, attrs...)
+
+	// Convert []slog.Attr to []any for slog.Log
+	anyAttrs := make([]any, len(finalAttrs))
+	for i, attr := range finalAttrs {
+		anyAttrs[i] = attr
+	}
+
+	// Log the message
+	l.logger.Log(ctx, level, msg, anyAttrs...)
+}
+
+// Convenience methods for log levels
+func (l *ContextAwareLogger) Info(ctx context.Context, msg string, attrs ...slog.Attr) {
+	l.Log(ctx, slog.LevelInfo, msg, attrs...)
+}
+
+func (l *ContextAwareLogger) Debug(ctx context.Context, msg string, attrs ...slog.Attr) {
+	l.Log(ctx, slog.LevelDebug, msg, attrs...)
+}
+
+func (l *ContextAwareLogger) Warn(ctx context.Context, msg string, attrs ...slog.Attr) {
+	l.Log(ctx, slog.LevelWarn, msg, attrs...)
+}
+
+func (l *ContextAwareLogger) Error(ctx context.Context, msg string, attrs ...slog.Attr) {
+	l.Log(ctx, slog.LevelError, msg, attrs...)
+}
+
+// --- Utilities ---
+
+// extractContextAttributes extracts key-value pairs from a context.Context
+func extractContextAttributes(ctx context.Context) []slog.Attr {
+	if ctx == nil {
+		return nil
+	}
+
+	// Assume attributes are stored in a map[string]string under "logAttrs"
+	contextData, ok := ctx.Value(LogAttrsKey).(map[string]string)
 	if !ok {
-		levelColor = ColorReset
+		return nil
 	}
 
-	// Collect attributes as key-value pairs
-	attrs := []string{}
-	r.Attrs(func(a slog.Attr) bool {
-		attrs = append(attrs, fmt.Sprintf("%s=%v", a.Key, a.Value))
-		return true
-	})
-
-	// Format and write the log message with color
-	_, err := h.output.Write([]byte(fmt.Sprintf(
-		"%s%s\033[0m: %s [%s]\n",
-		levelColor, r.Level.String(), r.Message, strings.Join(attrs, ", "),
-	)))
-	return err
+	// Convert map to slog.Attr
+	attrs := make([]slog.Attr, 0, len(contextData))
+	for k, v := range contextData {
+		attrs = append(attrs, slog.String(k, v))
+	}
+	return attrs
 }
 
-func (h *ColorConsoleHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return h
-}
-
-func (h *ColorConsoleHandler) WithGroup(name string) slog.Handler {
-	return h
-}
+// --- Handlers ---
 
 // LogDispatcher forwards logs to multiple handlers
 type LogDispatcher struct {
 	handlers []slog.Handler
 }
 
+// Required by slog.Handler interface: Determines if this dispatcher processes a log record at the given level
 func (d *LogDispatcher) Enabled(ctx context.Context, level slog.Level) bool {
 	for _, handler := range d.handlers {
 		if handler.Enabled(ctx, level) {
@@ -131,6 +177,7 @@ func (d *LogDispatcher) Enabled(ctx context.Context, level slog.Level) bool {
 	return false
 }
 
+// Required by slog.Handler interface: Processes and forwards a log record to all handlers
 func (d *LogDispatcher) Handle(ctx context.Context, r slog.Record) error {
 	var errs []error
 	for _, handler := range d.handlers {
@@ -141,6 +188,7 @@ func (d *LogDispatcher) Handle(ctx context.Context, r slog.Record) error {
 	return errors.Join(errs...)
 }
 
+// Required by slog.Handler interface: Groups attributes under a namespace for all handlers
 func (d *LogDispatcher) WithGroup(name string) slog.Handler {
 	newHandlers := make([]slog.Handler, len(d.handlers))
 	for i, handler := range d.handlers {
@@ -149,6 +197,7 @@ func (d *LogDispatcher) WithGroup(name string) slog.Handler {
 	return &LogDispatcher{handlers: newHandlers}
 }
 
+// Required by slog.Handler interface: Adds attributes to all handlers
 func (d *LogDispatcher) WithAttrs(attrs []slog.Attr) slog.Handler {
 	newHandlers := make([]slog.Handler, len(d.handlers))
 	for i, handler := range d.handlers {
@@ -157,19 +206,43 @@ func (d *LogDispatcher) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &LogDispatcher{handlers: newHandlers}
 }
 
-// LogBase initializes the base logger based on the configuration
-func LogBase(config *config.Config) *slog.Logger {
-	initSlogOnce.Do(func() {
-		baseSlogger = slog.New(ConsoleFileLogger(config))
-	})
-
-	if baseSlogger == nil {
-		return slog.Default()
-	}
-	return baseSlogger
+// ColorConsoleHandler provides color-coded console logging
+type ColorConsoleHandler struct {
+	output io.Writer
 }
 
-// LogWith provides a logger with additional context
-func LogWith(config *config.Config, args ...any) *slog.Logger {
-	return LogBase(config).With(args...)
+// Required by slog.Handler interface: Determines if this handler processes a log record at the given level
+func (h *ColorConsoleHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return true
+}
+
+// Required by slog.Handler interface: Processes and outputs a log record
+func (h *ColorConsoleHandler) Handle(ctx context.Context, r slog.Record) error {
+	// Fetch log level color
+	levelColor := levelColors[r.Level]
+	if levelColor == "" {
+		levelColor = ColorReset
+	}
+
+	// Collect attributes
+	attrs := []string{}
+	r.Attrs(func(a slog.Attr) bool {
+		attrs = append(attrs, fmt.Sprintf("%s=%v", a.Key, a.Value))
+		return true
+	})
+
+	// Format and write the log
+	message := fmt.Sprintf("%s%s\033[0m: %s [%s]\n", levelColor, r.Level.String(), r.Message, strings.Join(attrs, ", "))
+	_, err := h.output.Write([]byte(message))
+	return err
+}
+
+// Required by slog.Handler interface: Adds attributes to the handler
+func (h *ColorConsoleHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return h
+}
+
+// Required by slog.Handler interface: Groups attributes under a namespace
+func (h *ColorConsoleHandler) WithGroup(name string) slog.Handler {
+	return h
 }
