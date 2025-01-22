@@ -22,12 +22,22 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/chtc/chtc-go-logger/config"
 	"github.com/chtc/chtc-go-logger/logger"
 )
 
 func main() {
+	overrideConfig := config.Config{
+		FileOutput: config.FileOutputConfig{
+			FilePath: "/var/log/chtc-logger.log",
+		},
+	}
+
+	// Initialize the global logger and suppress error
+	_ = logger.LogInit(&overrideConfig)
+
 	// Example 1: Logging Without Context
-	nonContextLogger := logger.NewLogger()
+	nonContextLogger := logger.GetLogger()
 	nonContextLogger.Info("Hello, world!",
 		slog.String("status", "success"),
 		slog.String("module", "main"),
@@ -39,7 +49,7 @@ func main() {
 	)
 
 	// Example 2: Logging With Context
-	contextLogger := logger.NewContextAwareLogger()
+	contextLogger := logger.GetContextLogger()
 
 	// Create a context with attributes using the custom context key
 	ctx := context.WithValue(context.Background(), logger.LogAttrsKey, map[string]string{

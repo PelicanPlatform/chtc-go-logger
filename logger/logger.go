@@ -32,16 +32,8 @@ import (
 )
 
 var (
-	loggerConfig   *config.Config // Global configuration for the logger
-	consoleHandler slog.Handler   // Shared console handler
-	fileHandler    slog.Handler   // Shared file handler
+	log *slog.Logger // Global logger
 )
-
-// LoggerOptions defines options for enabling/disabling handlers
-type LoggerOptions struct {
-	EnableConsole bool // Whether to enable console logging
-	EnableFile    bool // Whether to enable file logging
-}
 
 // Define a custom type for context keys
 type contextKey string
@@ -49,64 +41,102 @@ type contextKey string
 // Define a constant for the log attributes key
 const LogAttrsKey contextKey = "logAttrs"
 
-func init() {
-	var err error
-	loggerConfig, err = config.LoadConfig("", nil) // Load defaults
+// LogInit initializes the global logger.
+// Accepts optional parameters: string (configFile) and *config.Config/config.Config (overrides).
+func LogInit(params ...interface{}) error {
+	// Parse the parameters
+	cfg, err := parseParams(params...)
 	if err != nil {
-		panic("Failed to load logger configuration: " + err.Error())
+		return err
 	}
 
-	// Initialize shared console handler
-	if loggerConfig.ConsoleOutput.Enabled {
-		if loggerConfig.ConsoleOutput.JSONOutput {
-			consoleHandler = slog.NewJSONHandler(os.Stdout, nil)
-		} else if loggerConfig.ConsoleOutput.Colors {
-			consoleHandler = &ColorConsoleHandler{output: os.Stdout}
-		} else {
-			consoleHandler = slog.NewTextHandler(os.Stdout, nil)
+	// Create and assign the global logger
+	log = createLogger(cfg)
+	return nil
+}
+
+// NewLogger creates and returns a new logger.
+// Accepts optional parameters: string (configFile) and *config.Config/config.Config (overrides).
+func NewLogger(params ...interface{}) (*slog.Logger, error) {
+	// Parse the parameters
+	cfg, err := parseParams(params...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create and return a new logger
+	return createLogger(cfg), nil
+}
+
+// parseParams parses the variadic parameters and loads the configuration.
+func parseParams(params ...interface{}) (*config.Config, error) {
+	var configFile string
+	var overrides *config.Config
+
+	// Process the parameters
+	for _, param := range params {
+		switch v := param.(type) {
+		case string:
+			configFile = v
+		case *config.Config:
+			overrides = v
+		case config.Config:
+			overrides = &v
+		default:
+			return nil, errors.New("invalid parameter type")
 		}
 	}
 
-	// Initialize shared file handler
-	if loggerConfig.FileOutput.Enabled {
-		fileHandler = slog.NewJSONHandler(&lumberjack.Logger{
-			Filename:   loggerConfig.FileOutput.FilePath,
-			MaxSize:    loggerConfig.FileOutput.MaxFileSize,
-			MaxBackups: loggerConfig.FileOutput.MaxBackups,
-			MaxAge:     loggerConfig.FileOutput.MaxAgeDays,
-			Compress:   true,
-		}, nil)
-	}
+	// Load the configuration
+	return config.LoadConfig(configFile, overrides)
 }
 
-// --- Non-Context Logger ---
-
-// NewLogger creates a logger based on LoggerOptions
-func NewLogger(options ...LoggerOptions) *slog.Logger {
-	// Set default options
-	opts := LoggerOptions{
-		EnableConsole: true,
-		EnableFile:    true,
-	}
-
-	// If options are provided, override the defaults
-	if len(options) > 0 {
-		opts = options[0]
-	}
-
+// createLogger creates a logger using the provided configuration.
+func createLogger(cfg *config.Config) *slog.Logger {
 	var handlers []slog.Handler
 
-	// Add console handler if enabled
-	if opts.EnableConsole && consoleHandler != nil {
-		handlers = append(handlers, consoleHandler)
+	// Console handler
+	if cfg.ConsoleOutput.Enabled {
+		if cfg.ConsoleOutput.JSONOutput {
+			handlers = append(handlers, slog.NewJSONHandler(os.Stdout, nil))
+		} else if cfg.ConsoleOutput.Colors {
+			handlers = append(handlers, &ColorConsoleHandler{output: os.Stdout})
+		} else {
+			handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
+		}
 	}
 
-	// Add file handler if enabled
-	if opts.EnableFile && fileHandler != nil {
-		handlers = append(handlers, fileHandler)
+	// File handler
+	if cfg.FileOutput.Enabled {
+		if cfg.FileOutput.FilePath == "" {
+			panic("File output enabled but file path is empty")
+		}
+		handlers = append(handlers, slog.NewJSONHandler(&lumberjack.Logger{
+			Filename:   cfg.FileOutput.FilePath,
+			MaxSize:    cfg.FileOutput.MaxFileSize,
+			MaxBackups: cfg.FileOutput.MaxBackups,
+			MaxAge:     cfg.FileOutput.MaxAgeDays,
+			Compress:   true,
+		}, nil))
+	}
+
+	// Fallback to a basic console logger if no handlers are configured
+	if len(handlers) == 0 {
+		handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
 	}
 
 	return slog.New(&LogDispatcher{handlers: handlers})
+}
+
+// GetLogger returns the global logger. If `LogInit` is not called, it initializes the logger with default settings.
+func GetLogger() *slog.Logger {
+	if log == nil {
+		// Initialize with defaults if LogInit is not called
+		if err := LogInit("", nil); err != nil {
+			panic("Failed to initialize default logger: " + err.Error())
+		}
+	}
+	return log
 }
 
 // --- Context-Aware Logger ---
@@ -116,9 +146,24 @@ type ContextAwareLogger struct {
 	logger *slog.Logger
 }
 
+// GetContextLogger returns the global context logger. If `LogInit` is not called, it initializes the logger with default settings.
+func GetContextLogger() *ContextAwareLogger {
+	if log == nil {
+		// Initialize with defaults if LogInit is not called
+		if err := LogInit("", nil); err != nil {
+			panic("Failed to initialize default logger: " + err.Error())
+		}
+	}
+	return &ContextAwareLogger{logger: log}
+}
+
 // NewContextAwareLogger creates a logger with context support by internally calling NewLogger
-func NewContextAwareLogger(options ...LoggerOptions) *ContextAwareLogger {
-	return &ContextAwareLogger{logger: NewLogger(options...)}
+func NewContextAwareLogger(params ...interface{}) (*ContextAwareLogger, error) {
+	newLogger, err := NewLogger(params...)
+	if err != nil {
+		return nil, err
+	}
+	return &ContextAwareLogger{logger: newLogger}, err
 }
 
 // Log logs a message at the specified level with context attributes and additional attributes
@@ -155,8 +200,6 @@ func (l *ContextAwareLogger) Warn(ctx context.Context, msg string, attrs ...slog
 func (l *ContextAwareLogger) Error(ctx context.Context, msg string, attrs ...slog.Attr) {
 	l.Log(ctx, slog.LevelError, msg, attrs...)
 }
-
-// --- Utilities ---
 
 // extractContextAttributes extracts key-value pairs from a context.Context
 func extractContextAttributes(ctx context.Context) []slog.Attr {
