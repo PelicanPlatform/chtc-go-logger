@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	_ "embed"
+	"reflect"
 
 	"github.com/spf13/viper"
 )
@@ -72,33 +73,23 @@ func LoadConfig(configFile string, overrides *Config) (*Config, error) {
 	return config, nil
 }
 
-// Apply programmatic overrides to the config
-func ApplyOverrides(config, overrides *Config) {
-	if overrides.LogLevel != "" {
-		config.LogLevel = overrides.LogLevel
-	}
-	if overrides.ConsoleOutput.Enabled {
-		config.ConsoleOutput.Enabled = overrides.ConsoleOutput.Enabled
-	}
-	if overrides.ConsoleOutput.JSONOutput {
-		config.ConsoleOutput.JSONOutput = overrides.ConsoleOutput.JSONOutput
-	}
-	if overrides.ConsoleOutput.Colors {
-		config.ConsoleOutput.Colors = overrides.ConsoleOutput.Colors
-	}
-	if overrides.FileOutput.Enabled {
-		config.FileOutput.Enabled = overrides.FileOutput.Enabled
-	}
-	if overrides.FileOutput.FilePath != "" {
-		config.FileOutput.FilePath = overrides.FileOutput.FilePath
-	}
-	if overrides.FileOutput.MaxFileSize != 0 {
-		config.FileOutput.MaxFileSize = overrides.FileOutput.MaxFileSize
-	}
-	if overrides.FileOutput.MaxBackups != 0 {
-		config.FileOutput.MaxBackups = overrides.FileOutput.MaxBackups
-	}
-	if overrides.FileOutput.MaxAgeDays != 0 {
-		config.FileOutput.MaxAgeDays = overrides.FileOutput.MaxAgeDays
+// ApplyOverrides dynamically applies non-zero override values to a config, including nested structs.
+func ApplyOverrides(config, overrides interface{}) {
+	// Get reflection values of the structs
+	overrideVal := reflect.ValueOf(overrides).Elem()
+	configVal := reflect.ValueOf(config).Elem()
+
+	for i := 0; i < overrideVal.NumField(); i++ {
+		field := overrideVal.Type().Field(i)
+		overrideField := overrideVal.Field(i)
+		configField := configVal.FieldByName(field.Name)
+
+		if overrideField.Kind() == reflect.Struct {
+			// If the field is a struct, recurse
+			ApplyOverrides(configField.Addr().Interface(), overrideField.Addr().Interface())
+		} else if !overrideField.IsZero() {
+			// If the field is not zero, override the value
+			configField.Set(overrideField)
+		}
 	}
 }
