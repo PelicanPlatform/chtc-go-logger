@@ -20,6 +20,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"io"
 	"log/slog"
 	"log/syslog"
 	"sync"
@@ -27,20 +28,27 @@ import (
 	"github.com/chtc/chtc-go-logger/config"
 )
 
+// Handler that wraps another slog handler, forwarding its output to syslog
 type SyslogHandler struct {
-	buf     bytes.Buffer
+	buf     *bytes.Buffer
 	handler slog.Handler
 	writer  *syslog.Writer
 	mu      *sync.Mutex
 }
 
-func NewSyslogHandler(syslogOpts config.SyslogOutputConfig, logOpts *slog.HandlerOptions) (slog.Handler, error) {
+// Function that, given an output channel, returns an slog handler
+type HandlerSupplier func(w io.Writer) slog.Handler
+
+// Construct a new Syslog-forwarding log handler.
+// Upon logging a message, passes the log record to the handler supplied by supplyHandler,
+// then forward the contents of that log to the syslog daemon specified by syslogOpts
+func NewSyslogHandler(syslogOpts config.SyslogOutputConfig, supplyHandler HandlerSupplier) (slog.Handler, error) {
 	handler := SyslogHandler{
 		mu:  &sync.Mutex{},
-		buf: bytes.Buffer{},
+		buf: &bytes.Buffer{},
 	}
 
-	handler.handler = slog.NewJSONHandler(&handler.buf, logOpts)
+	handler.handler = supplyHandler(handler.buf)
 	writer, err := syslog.Dial(syslogOpts.Network, syslogOpts.Addr, syslog.LOG_DEBUG, syslogOpts.Tag)
 	if err != nil {
 		return nil, err
@@ -66,15 +74,17 @@ func (s *SyslogHandler) Handle(ctx context.Context, r slog.Record) (err error) {
 	}
 	// Read the logged contents back out of the buffer, then forward to syslog, converting
 	// the slog level as appropriate
+	msg := s.buf.String()
+	s.buf.Reset()
 	switch lvl := r.Level; lvl {
 	case slog.LevelDebug:
-		err = s.writer.Debug(s.buf.String())
+		err = s.writer.Debug(msg)
 	case slog.LevelInfo:
-		err = s.writer.Info(s.buf.String())
+		err = s.writer.Info(msg)
 	case slog.LevelWarn:
-		err = s.writer.Warning(s.buf.String())
+		err = s.writer.Warning(msg)
 	case slog.LevelError:
-		err = s.writer.Err(s.buf.String())
+		err = s.writer.Err(msg)
 	}
 	return err
 }

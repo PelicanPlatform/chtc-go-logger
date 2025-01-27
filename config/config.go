@@ -27,10 +27,11 @@ type FileOutputConfig struct {
 	MaxAgeDays  int    `mapstructure:"max_age_days"`  // Maximum age of log files in days
 }
 type SyslogOutputConfig struct {
-	Enabled bool   `mapstructure:"enabled"` // Enable or disable syslog output
-	Tag     string `mapstructure:"tag"`     // Syslog TAG for generated messages
-	Network string `mapstructure:"network"` // Network over which to connect to syslog, default empty for local daemon
-	Addr    string `mapstructure:"addr"`    // Address of remote syslog server, if any
+	Enabled    bool   `mapstructure:"enabled"`     // Enable or disable syslog output
+	Tag        string `mapstructure:"tag"`         // Syslog TAG for generated messages, roughly correlates to "application name"
+	Network    string `mapstructure:"network"`     // Network over which to connect to syslog, default empty for local daemon
+	Addr       string `mapstructure:"addr"`        // Address of remote syslog server, if any
+	JSONOutput bool   `mapstructure:"json_object"` // If true, output JSON objects
 }
 
 type Config struct {

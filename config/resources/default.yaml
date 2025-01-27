@@ -32,6 +32,7 @@ file_output: # File output settings
 
 syslog_output: # Syslog output settings
   enabled: true # Enable or disable syslog output
-  tag: "chtc" # Syslog tag to include with outgoing messages
+  tag: "" # Syslog tag to include with outgoing messages, (default to os.Args[0])
   network: "" # Network over which to send syslog messages (default local)
   addr: "" # Remote server address to send syslog messages to (default local)
+  json_object: true # If true, output JSON objects
