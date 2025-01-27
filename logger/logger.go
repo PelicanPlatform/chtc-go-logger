@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/chtc/chtc-go-logger/config"
+	handler "github.com/chtc/chtc-go-logger/logger/handlers"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -118,6 +119,14 @@ func createLogger(cfg *config.Config) *slog.Logger {
 			MaxAge:     cfg.FileOutput.MaxAgeDays,
 			Compress:   true,
 		}, nil))
+	}
+
+	// Syslog handler
+	// TODO don't like that we can now have an error on-init
+	if cfg.SyslogOutput.Enabled {
+		syslogHandler, _ := handler.NewSyslogHandler(cfg.SyslogOutput, nil)
+
+		handlers = append(handlers, syslogHandler)
 	}
 
 	// Fallback to a basic console logger if no handlers are configured
