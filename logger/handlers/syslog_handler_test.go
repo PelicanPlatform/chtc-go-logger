@@ -79,7 +79,6 @@ func TestSyslogServer(t *testing.T) {
 			Enabled:    true,
 			JSONOutput: true,
 			Network:    "tcp",
-			Tag:        syslogTag,
 			Addr:       localSyslogServer,
 		},
 	}

@@ -31,8 +31,7 @@ file_output: # File output settings
   max_age_days: 30 # Maximum age of logs in days
 
 syslog_output: # Syslog output settings
-  enabled: true # Enable or disable syslog output
-  tag: "" # Syslog tag to include with outgoing messages, (default to os.Args[0])
+  enabled: false # Enable or disable syslog output (false by default)
   network: "" # Network over which to send syslog messages (default local)
   addr: "" # Remote server address to send syslog messages to (default local)
   json_object: true # If true, output JSON objects

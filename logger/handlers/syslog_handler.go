@@ -49,7 +49,7 @@ func NewSyslogHandler(syslogOpts config.SyslogOutputConfig, supplyHandler Handle
 	}
 
 	handler.handler = supplyHandler(handler.buf)
-	writer, err := syslog.Dial(syslogOpts.Network, syslogOpts.Addr, syslog.LOG_DEBUG, syslogOpts.Tag)
+	writer, err := syslog.Dial(syslogOpts.Network, syslogOpts.Addr, syslog.LOG_DEBUG, "")
 	if err != nil {
 		return nil, err
 	}
