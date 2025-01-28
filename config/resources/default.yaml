@@ -29,3 +29,9 @@ file_output: # File output settings
   max_file_size: 100 # Max file size in MB
   max_backups: 5 # Number of backups to retain
   max_age_days: 30 # Maximum age of logs in days
+
+syslog_output: # Syslog output settings
+  enabled: false # Enable or disable syslog output (false by default)
+  network: "" # Network over which to send syslog messages (default local)
+  addr: "" # Remote server address to send syslog messages to (default local)
+  json_object: true # If true, output JSON objects

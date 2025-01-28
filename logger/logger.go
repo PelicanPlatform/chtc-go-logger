@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/chtc/chtc-go-logger/config"
+	handler "github.com/chtc/chtc-go-logger/logger/handlers"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -51,8 +52,8 @@ func LogInit(params ...interface{}) error {
 	}
 
 	// Create and assign the global logger
-	log = createLogger(cfg)
-	return nil
+	log, err = createLogger(cfg)
+	return err
 }
 
 // NewLogger creates and returns a new logger.
@@ -65,7 +66,7 @@ func NewLogger(params ...interface{}) (*slog.Logger, error) {
 	}
 
 	// Create and return a new logger
-	return createLogger(cfg), nil
+	return createLogger(cfg)
 }
 
 // parseParams parses the variadic parameters and loads the configuration.
@@ -92,7 +93,7 @@ func parseParams(params ...interface{}) (*config.Config, error) {
 }
 
 // createLogger creates a logger using the provided configuration.
-func createLogger(cfg *config.Config) *slog.Logger {
+func createLogger(cfg *config.Config) (*slog.Logger, error) {
 	var handlers []slog.Handler
 
 	// Console handler
@@ -120,12 +121,34 @@ func createLogger(cfg *config.Config) *slog.Logger {
 		}, nil))
 	}
 
+	// Syslog handler
+	if cfg.SyslogOutput.Enabled {
+		var (
+			syslogHandler slog.Handler
+			err           error
+		)
+		if cfg.SyslogOutput.JSONOutput {
+			syslogHandler, err = handler.NewSyslogHandler(cfg.SyslogOutput, func(w io.Writer) slog.Handler {
+				return slog.NewJSONHandler(w, nil)
+			})
+		} else {
+			syslogHandler, err = handler.NewSyslogHandler(cfg.SyslogOutput, func(w io.Writer) slog.Handler {
+				return slog.NewTextHandler(w, nil)
+			})
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		handlers = append(handlers, syslogHandler)
+	}
+
 	// Fallback to a basic console logger if no handlers are configured
 	if len(handlers) == 0 {
 		handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
 	}
 
-	return slog.New(&LogDispatcher{handlers: handlers})
+	return slog.New(&LogDispatcher{handlers: handlers}), nil
 }
 
 // GetLogger returns the global logger. If `LogInit` is not called, it initializes the logger with default settings.

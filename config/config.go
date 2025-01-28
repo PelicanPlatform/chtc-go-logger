@@ -26,11 +26,18 @@ type FileOutputConfig struct {
 	MaxBackups  int    `mapstructure:"max_backups"`   // Number of backups to retain
 	MaxAgeDays  int    `mapstructure:"max_age_days"`  // Maximum age of log files in days
 }
+type SyslogOutputConfig struct {
+	Enabled    bool   `mapstructure:"enabled"`     // Enable or disable syslog output
+	Network    string `mapstructure:"network"`     // Network over which to connect to syslog, default empty for local daemon
+	Addr       string `mapstructure:"addr"`        // Address of remote syslog server, if any
+	JSONOutput bool   `mapstructure:"json_object"` // If true, output JSON objects
+}
 
 type Config struct {
 	LogLevel      string              `mapstructure:"log_level"`      // Log level (e.g., DEBUG, INFO, WARN, ERROR)
 	ConsoleOutput ConsoleOutputConfig `mapstructure:"console_output"` // Console output settings
 	FileOutput    FileOutputConfig    `mapstructure:"file_output"`    // File output settings
+	SyslogOutput  SyslogOutputConfig  `mapstructure:"syslog_output"`  // Syslog output settings
 }
 
 // LoadConfig loads and merges the configuration in this order:
