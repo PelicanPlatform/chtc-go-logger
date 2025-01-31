@@ -94,6 +94,7 @@ func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
 	}
 
 	// If filesystem logging is enabled, check usage
+	// This is probably a pretty big performance bottleneck
 	if s.logConfig.FileOutput.Enabled {
 		usage, err := s.statLogFS()
 		stats.DiskAvail = usage
@@ -105,6 +106,7 @@ func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
 		}
 	}
 
+	// Measure duration of logging + log metadata acquisition
 	elapsed := time.Since(start)
 	stats.Duration = elapsed
 
