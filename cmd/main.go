@@ -20,6 +20,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/chtc/chtc-go-logger/config"
 	"github.com/chtc/chtc-go-logger/logger"
+	"github.com/chtc/chtc-go-logger/logger/handlers"
 )
 
 func main() {
@@ -105,6 +107,11 @@ func runStreamMode() {
 	log.Info("All clients and server have exited.")
 }
 
+// TODO what do we do with logging stats besides log them??
+func printLogStats(stats handlers.LogStats) {
+	fmt.Printf("%+v\n", stats)
+}
+
 // **BURST MODE: Runs a few quick log examples**
 func runBurstMode() {
 	log := logger.GetLogger()
@@ -133,27 +140,32 @@ func runBurstMode() {
 		"requestID": "abc-123",
 	})
 
-	contextLogger.Info(ctx, "Operation completed",
+	stats := contextLogger.Info(ctx, "Operation completed",
 		slog.String("status", "success"),
 		slog.String("elapsedTime", "34ms"),
 		slog.String("result", "ok"),
 	)
-	contextLogger.Warn(ctx, "Potential issue detected",
+
+	printLogStats(stats)
+	stats = contextLogger.Warn(ctx, "Potential issue detected",
 		slog.String("code", "123"),
 		slog.String("severity", "high"),
 		slog.String("retryable", "false"),
 	)
-	contextLogger.Error(ctx, "Operation failed",
+	printLogStats(stats)
+
+	stats = contextLogger.Error(ctx, "Operation failed",
 		slog.String("error", "timeout"),
 		slog.String("endpoint", "/api/v1/data"),
 		slog.String("method", "POST"),
 	)
+	printLogStats(stats)
 }
 
 func init() {
 	overrideConfig := config.Config{
 		FileOutput: config.FileOutputConfig{
-			FilePath: "/var/log/chtc-logger.log",
+			FilePath: "/tmp/chtc-logger.log",
 		},
 	}
 
