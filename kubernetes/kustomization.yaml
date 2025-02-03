@@ -1,0 +1,4 @@
+resources:
+  - elastic-kibana/
+  - application/
+  - opensearch/
