@@ -153,7 +153,7 @@ func runBurstMode() {
 func init() {
 	overrideConfig := config.Config{
 		FileOutput: config.FileOutputConfig{
-			FilePath: "/var/log/chtc-logger.log",
+			FilePath: os.Getenv("LOG_PATH"),
 		},
 	}
 

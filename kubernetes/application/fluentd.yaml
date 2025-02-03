@@ -13,6 +13,8 @@ data:
       tag app.logs
       <parse>
         @type json
+        time_key time
+        time_format %iso8601
       </parse>
     </source>
     <match app.logs>
@@ -23,44 +25,36 @@ data:
       logstash_prefix fluentd
       flush_interval 1s
     </match>
-    <match app.logs>
-      @type opensearch
-      host opensearch.opensearch.svc.cluster.local
-      port 9200
-      logstash_format true
-      logstash_prefix fluentd
-      flush_interval 1s
-    </match>
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: busybox
+  name: go-log-client
   labels:
-    component: busybox
+    component: go-log-client
 spec:
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      component: busybox
+      component: go-log-client
   template:
     metadata:
       labels:
-        component: busybox
+        component: go-log-client
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
-        - name: busybox
-          image: busybox
+        - name: go-log-client
+          image: hub.opensciencegrid.org/mwestphall/go-log-client
           args:
-            - sh
-            - -c
-            - >
-              while true;
-              do
-                echo '{"date":"'$(date)'", "hello":"world", "log": "filebeat log"}' >> /var/log/access.log;
-                sleep 10;
-              done
+            - stream
+          env:
+            - name: LOG_PATH
+              value: /var/log/access.log
           volumeMounts:
             - name: log
               mountPath: /var/log

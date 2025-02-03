@@ -1,0 +1,5 @@
+services:
+  fluentd:
+    image: hub.opensciencegrid.org/mwestphall/go-log-client
+    build:
+      context: .
