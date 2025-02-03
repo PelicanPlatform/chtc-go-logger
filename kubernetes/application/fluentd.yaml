@@ -17,6 +17,14 @@ data:
         time_format %iso8601
       </parse>
     </source>
+
+    <filter app.logs>
+      @type record_transformer
+      <record>
+        hostname "#{Socket.gethostname}"
+      </record>
+    </filter>
+
     <match app.logs>
       @type elasticsearch
       host elasticsearch.elastic.svc.cluster.local
