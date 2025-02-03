@@ -190,7 +190,7 @@ func NewContextAwareLogger(params ...interface{}) (*ContextAwareLogger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ContextAwareLogger{logger: newLogger, statHandler: log.Handler().(*handler.LogStatsHandler)}, err
+	return &ContextAwareLogger{logger: newLogger, statHandler: newLogger.Handler().(*handler.LogStatsHandler)}, err
 }
 
 // Log logs a message at the specified level with context attributes and additional attributes
