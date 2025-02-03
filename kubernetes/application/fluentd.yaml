@@ -26,12 +26,23 @@ data:
     </filter>
 
     <match app.logs>
-      @type elasticsearch
-      host elasticsearch.elastic.svc.cluster.local
-      port 9200
-      logstash_format true
-      logstash_prefix fluentd
-      flush_interval 1s
+      @type copy
+      <store>
+        @type elasticsearch
+        host elasticsearch.elastic.svc.cluster.local
+        port 9200
+        logstash_format true
+        logstash_prefix fluentd
+        flush_interval 1s
+      </store>
+      <store>
+        @type opensearch
+        host opensearch.opensearch.svc.cluster.local
+        port 9200
+        logstash_format true
+        logstash_prefix fluentd
+        flush_interval 1s
+      </store>
     </match>
 ---
 apiVersion: apps/v1
