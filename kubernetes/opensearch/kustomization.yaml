@@ -1,6 +1,0 @@
-namespace: opensearch
-
-resources:
-  - namespace.yaml
-  - opensearch.yaml
-  - os-dashboard.yaml

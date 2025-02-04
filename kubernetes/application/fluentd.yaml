@@ -26,23 +26,12 @@ data:
     </filter>
 
     <match app.logs>
-      @type copy
-      <store>
-        @type elasticsearch
-        host elasticsearch.elastic.svc.cluster.local
-        port 9200
-        logstash_format true
-        logstash_prefix fluentd
-        flush_interval 1s
-      </store>
-      <store>
-        @type opensearch
-        host opensearch.opensearch.svc.cluster.local
-        port 9200
-        logstash_format true
-        logstash_prefix fluentd
-        flush_interval 1s
-      </store>
+      @type elasticsearch
+      host elasticsearch.elastic.svc.cluster.local
+      port 9200
+      logstash_format true
+      logstash_prefix fluentd
+      flush_interval 1s
     </match>
 ---
 apiVersion: apps/v1
@@ -100,7 +89,8 @@ spec:
               cpu: '0.5'
       volumes:
         - name: log
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 5Mi
         - name: fluentd-config
           configMap:
             name: fluentd-config
