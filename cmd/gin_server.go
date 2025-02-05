@@ -24,13 +24,11 @@ func StartServer(portChan chan<- int) {
 
 	// Define a test endpoint (same as before)
 	r.GET("/test", func(c *gin.Context) {
-		statusCode, response := generateRandomStatusResponse() // Now status and response are correctly paired
+		statusCode, response := generateRandomStatusResponse()
 
-		// Extract context
 		ctx := c.Request.Context()
 		logger := logger.GetContextLogger()
 
-		// Log messages only based on status codes
 		switch {
 		case statusCode >= 500:
 			logger.Error(ctx, "Internal server error",
@@ -66,7 +64,6 @@ func StartServer(portChan chan<- int) {
 	logger := logger.GetLogger()
 	logger.Info("Server started successfully", slog.Int("port", port))
 
-	// Create HTTP server
 	srv := &http.Server{Handler: r}
 
 	// Run server in a goroutine
@@ -76,7 +73,6 @@ func StartServer(portChan chan<- int) {
 		}
 	}()
 
-	// Handle graceful shutdown
 	waitForShutdown(srv)
 }
 
@@ -102,7 +98,6 @@ func waitForShutdown(srv *http.Server) {
 // Generate a weighted random status code and its corresponding response
 func generateRandomStatusResponse() (int, string) {
 	cfg := GetConfig()
-	// Define valid status codes and corresponding response options
 	statusOptions := []struct {
 		statusCode int
 		responses  []string
