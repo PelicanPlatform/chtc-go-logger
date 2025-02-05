@@ -19,12 +19,19 @@ package main
 
 import (
 	"log/slog"
+	"sync"
 
 	"github.com/chtc/chtc-go-logger/config"
 	"github.com/chtc/chtc-go-logger/logger"
 	"github.com/spf13/viper"
 )
 
+var (
+	GlobalConfig *Config
+	once         sync.Once
+)
+
+// Config struct
 type Config struct {
 	HTTPResponseWeights struct {
 		Response200 int `mapstructure:"response_200"`
@@ -37,35 +44,48 @@ type Config struct {
 	} `mapstructure:"logging"`
 }
 
-func LoadConfig() (*Config, error) {
-	v := viper.New()
+// LoadConfig initializes GlobalConfig once
+func LoadConfig() error {
+	var err error
+	once.Do(func() {
+		v := viper.New()
 
-	// Set default values
-	v.SetDefault("http_response_weights.response_200", 1)
-	v.SetDefault("http_response_weights.response_400", 1)
-	v.SetDefault("http_response_weights.response_500", 1)
-	v.SetDefault("logging.min_disk_space_required", 500) // Example default in MB
+		// Set default values
+		v.SetDefault("http_response_weights.response_200", 1)
+		v.SetDefault("http_response_weights.response_400", 1)
+		v.SetDefault("http_response_weights.response_500", 1)
+		v.SetDefault("logging.min_disk_space_required", 500) // Example default in MB
 
-	// Example: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_200
-	config.ManuallyLoadEnvVariables(v, "LOG_GENERATOR")
+		// Example: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_200
+		config.ManuallyLoadEnvVariables(v, "LOG_GENERATOR")
 
-	var config Config
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, err
-	}
+		var cfg Config
+		if err = v.Unmarshal(&cfg); err == nil {
+			GlobalConfig = &cfg
+		}
+	})
 
 	log := logger.GetLogger()
 	// Log the full config dump
 	log.Debug("Loaded configuration",
 		slog.Group("http_response_weights",
-			slog.Int("response_200", config.HTTPResponseWeights.Response200),
-			slog.Int("response_400", config.HTTPResponseWeights.Response400),
-			slog.Int("response_500", config.HTTPResponseWeights.Response500),
+			slog.Int("response_200", GlobalConfig.HTTPResponseWeights.Response200),
+			slog.Int("response_400", GlobalConfig.HTTPResponseWeights.Response400),
+			slog.Int("response_500", GlobalConfig.HTTPResponseWeights.Response500),
 		),
 		slog.Group("logging",
-			slog.Int("min_disk_space_required", config.Logging.MinDiskSpaceRequired),
+			slog.Int("min_disk_space_required", GlobalConfig.Logging.MinDiskSpaceRequired),
 		),
 	)
 
-	return &config, nil
+	return err
+}
+
+// GetConfig returns the global configuration
+func GetConfig() *Config {
+	log := logger.GetLogger()
+	if GlobalConfig == nil {
+		log.Error("Config not initialized. Call LoadConfig() first.")
+	}
+	return GlobalConfig
 }

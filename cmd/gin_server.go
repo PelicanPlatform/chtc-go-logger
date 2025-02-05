@@ -24,14 +24,13 @@ func StartServer(portChan chan<- int) {
 
 	// Define a test endpoint (same as before)
 	r.GET("/test", func(c *gin.Context) {
-		response := generateRandomResponse()
-		statusCode := generateRandomStatusCode()
+		statusCode, response := generateRandomStatusResponse() // Now status and response are correctly paired
 
 		// Extract context
 		ctx := c.Request.Context()
 		logger := logger.GetContextLogger()
 
-		// Log appropriately based on status and response
+		// Log messages only based on status codes
 		switch {
 		case statusCode >= 500:
 			logger.Error(ctx, "Internal server error",
@@ -42,15 +41,6 @@ func StartServer(portChan chan<- int) {
 			logger.Warn(ctx, "Client request resulted in an error",
 				slog.String("status_code", fmt.Sprintf("%d", statusCode)),
 				slog.String("response", response),
-			)
-		case response == "Timeout":
-			logger.Warn(ctx, "Request processing took too long",
-				slog.String("status_code", fmt.Sprintf("%d", statusCode)),
-				slog.String("warning", "timeout"),
-			)
-		case response == "Processing":
-			logger.Debug(ctx, "Request is still being processed",
-				slog.String("status_code", fmt.Sprintf("%d", statusCode)),
 			)
 		default:
 			logger.Info(ctx, "Request processed successfully",
@@ -109,14 +99,57 @@ func waitForShutdown(srv *http.Server) {
 	}
 }
 
-// Generate a random response message
-func generateRandomResponse() string {
-	responses := []string{"Success", "Failure", "Timeout", "Error", "Processing"}
-	return responses[rand.Intn(len(responses))]
+// Generate a weighted random status code and its corresponding response
+func generateRandomStatusResponse() (int, string) {
+	cfg := GetConfig()
+	// Define valid status codes and corresponding response options
+	statusOptions := []struct {
+		statusCode int
+		responses  []string
+		weight     int
+	}{
+		{200, []string{"Success", "Processing"}, cfg.HTTPResponseWeights.Response200},
+		{400, []string{"Failure"}, cfg.HTTPResponseWeights.Response400},
+		{500, []string{"Timeout", "Error"}, cfg.HTTPResponseWeights.Response500},
+	}
+
+	// Extract weights and pick a status code
+	statusCodes := make([]int, len(statusOptions))
+	weights := make([]int, len(statusOptions))
+	for i, opt := range statusOptions {
+		statusCodes[i] = opt.statusCode
+		weights[i] = opt.weight
+	}
+
+	selectedStatus := weightedRandomChoice(statusCodes, weights)
+
+	// Select a response for the chosen status code
+	var selectedResponse string
+	for _, opt := range statusOptions {
+		if opt.statusCode == selectedStatus {
+			selectedResponse = opt.responses[rand.Intn(len(opt.responses))]
+			break
+		}
+	}
+
+	return selectedStatus, selectedResponse
 }
 
-// Generate a random status code
-func generateRandomStatusCode() int {
-	statusCodes := []int{200, 400, 403, 500, 503}
-	return statusCodes[rand.Intn(len(statusCodes))]
+// Helper function for weighted random selection
+func weightedRandomChoice[T any](items []T, weights []int) T {
+	totalWeight := 0
+	for _, w := range weights {
+		totalWeight += w
+	}
+
+	randVal := rand.Intn(totalWeight)
+	for i, w := range weights {
+		if randVal < w {
+			return items[i]
+		}
+		randVal -= w
+	}
+
+	// Fallback (should not be reached)
+	return items[len(items)-1]
 }
