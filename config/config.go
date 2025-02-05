@@ -104,7 +104,7 @@ func ApplyOverrides(config, overrides interface{}) {
 
 // ManuallyLoadEnvVariables scans and loads all environment variables with the given prefix into Viper.
 func ManuallyLoadEnvVariables(v *viper.Viper, prefix string) {
-	prefix = strings.ToUpper(prefix) + "_" // Ensure prefix is uppercase
+	prefix = strings.ToUpper(prefix) + "__" // Ensure prefix is uppercase
 
 	for _, env := range os.Environ() {
 		parts := strings.SplitN(env, "=", 2)
