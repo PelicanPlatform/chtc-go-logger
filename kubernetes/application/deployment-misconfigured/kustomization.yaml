@@ -1,0 +1,7 @@
+namePrefix: misconfigured-
+
+resources:
+- ../deployment
+
+patches:
+- path: deployment-patch.yaml

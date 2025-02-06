@@ -1,0 +1,22 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-log-client
+  labels:
+    component: go-log-client
+spec:
+  replicas: 2
+  template:
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: go-log-client
+          env:
+            - name: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_500
+              value: "5"
+            - name: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_200
+              value: "1"
