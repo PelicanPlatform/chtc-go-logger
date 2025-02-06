@@ -46,6 +46,7 @@ spec:
   selector:
     matchLabels:
       component: go-log-client
+  replicas: 5
   template:
     metadata:
       labels:
@@ -61,8 +62,10 @@ spec:
           args:
             - stream
           env:
-            - name: LOG_PATH
+            - name: LOGGER__FILE_OUTPUT__FILE_PATH
               value: /var/log/access.log
+            - name: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_200
+              value: "10"
           volumeMounts:
             - name: log
               mountPath: /var/log

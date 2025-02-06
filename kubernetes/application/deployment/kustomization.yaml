@@ -1,0 +1,4 @@
+namespace: application
+
+resources:
+  - fluentd.yaml

@@ -1,5 +1,4 @@
-namespace: application
-
 resources:
+  - deployment/
+  - deployment-misconfigured/
   - namespace.yaml
-  - fluentd.yaml
