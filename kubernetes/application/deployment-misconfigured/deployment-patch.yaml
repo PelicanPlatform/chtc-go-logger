@@ -20,3 +20,5 @@ spec:
               value: "5"
             - name: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_200
               value: "1"
+            - name: LOG_GENERATOR__CLIENT_PATH_WEIGHTS__STAGING
+              value: "5"

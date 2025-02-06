@@ -93,7 +93,7 @@ spec:
       volumes:
         - name: log
           emptyDir:
-            sizeLimit: 5Mi
+            sizeLimit: 1Gi
         - name: fluentd-config
           configMap:
             name: fluentd-config
