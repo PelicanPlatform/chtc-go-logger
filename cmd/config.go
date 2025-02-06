@@ -39,6 +39,12 @@ type Config struct {
 		Response500 int `mapstructure:"response_500"`
 	} `mapstructure:"http_response_weights"`
 
+	ClientPathWeights struct {
+		Test        int `mapstructure:"test"`
+		Staging     int `mapstructure:"staging"`
+		Development int `mapstructure:"development"`
+	} `mapstructure:"client_path_weights"`
+
 	Logging struct {
 		MinDiskSpaceRequired int `mapstructure:"min_disk_space_required"`
 	} `mapstructure:"logging"`
@@ -54,6 +60,9 @@ func LoadConfig() error {
 		v.SetDefault("http_response_weights.response_200", 1)
 		v.SetDefault("http_response_weights.response_400", 1)
 		v.SetDefault("http_response_weights.response_500", 1)
+		v.SetDefault("client_path_weights.test", 1)
+		v.SetDefault("client_path_weights.staging", 1)
+		v.SetDefault("client_path_weights.development", 1)
 		v.SetDefault("logging.min_disk_space_required", 500) // Example default in MB
 
 		// Example: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_200
@@ -72,6 +81,11 @@ func LoadConfig() error {
 			slog.Int("response_200", GlobalConfig.HTTPResponseWeights.Response200),
 			slog.Int("response_400", GlobalConfig.HTTPResponseWeights.Response400),
 			slog.Int("response_500", GlobalConfig.HTTPResponseWeights.Response500),
+		),
+		slog.Group("http_path_weights",
+			slog.Int("test", GlobalConfig.ClientPathWeights.Test),
+			slog.Int("staging", GlobalConfig.ClientPathWeights.Staging),
+			slog.Int("development", GlobalConfig.ClientPathWeights.Development),
 		),
 		slog.Group("logging",
 			slog.Int("min_disk_space_required", GlobalConfig.Logging.MinDiskSpaceRequired),

@@ -23,7 +23,7 @@ func StartServer(portChan chan<- int) {
 	r.Use(GinLoggerMiddleware(), GinRecoveryMiddleware())
 
 	// Define a test endpoint (same as before)
-	r.GET("/test", func(c *gin.Context) {
+	r.GET("/:path", func(c *gin.Context) {
 		statusCode, response := generateRandomStatusResponse()
 
 		ctx := c.Request.Context()

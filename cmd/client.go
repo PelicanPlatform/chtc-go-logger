@@ -55,8 +55,9 @@ func StartClient(ctx context.Context, clientID string, serverPort int, wg *sync.
 				"requestID": requestID,
 			})
 
+			path := generateRandomRequestPath()
 			// Use dynamic server port
-			url := fmt.Sprintf("http://localhost:%d/test", serverPort)
+			url := fmt.Sprintf("http://localhost:%d/%v", serverPort, path)
 			req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 			resp, err := client.Do(req)
@@ -84,4 +85,23 @@ func StartMockClients(ctx context.Context, numClients int, serverPort int, wg *s
 		wg.Add(1)
 		go StartClient(ctx, clientID, serverPort, wg)
 	}
+}
+
+// Generate a weighted random status code and its corresponding response
+func generateRandomRequestPath() string {
+	cfg := GetConfig()
+	// Extract weights and pick a request path
+	paths := []string{
+		"test",
+		"staging",
+		"development",
+	}
+	weights := []int{
+		cfg.ClientPathWeights.Test,
+		cfg.ClientPathWeights.Staging,
+		cfg.ClientPathWeights.Development,
+	}
+
+	selectedPath := weightedRandomChoice(paths, weights)
+	return selectedPath
 }
