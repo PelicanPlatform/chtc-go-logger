@@ -3,7 +3,9 @@ package config
 import (
 	"bytes"
 	_ "embed"
+	"os"
 	"reflect"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -62,9 +64,8 @@ func LoadConfig(configFile string, overrides *Config) (*Config, error) {
 		}
 	}
 
-	// Load environment variables
-	v.SetEnvPrefix("LOGGER")
-	v.AutomaticEnv()
+	// Manually load environment variables
+	ManuallyLoadEnvVariables(v, "LOGGER")
 
 	// Parse into Config struct
 	config := &Config{}
@@ -97,6 +98,29 @@ func ApplyOverrides(config, overrides interface{}) {
 		} else if !overrideField.IsZero() {
 			// If the field is not zero, override the value
 			configField.Set(overrideField)
+		}
+	}
+}
+
+// ManuallyLoadEnvVariables scans and loads all environment variables with the given prefix into Viper.
+func ManuallyLoadEnvVariables(v *viper.Viper, prefix string) {
+	prefix = strings.ToUpper(prefix) + "__" // Ensure prefix is uppercase
+
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		key, value := parts[0], parts[1]
+
+		if strings.HasPrefix(key, prefix) {
+			// Remove the prefix
+			keyWithoutPrefix := strings.TrimPrefix(key, prefix)
+
+			// Convert key to Viper-compatible format:
+			// - Replace "__" with "." for nested structures
+			// - Convert to lowercase (Viper's default behavior)
+			viperKey := strings.ToLower(strings.ReplaceAll(keyWithoutPrefix, "__", "."))
+
+			v.Set(viperKey, value)
+
 		}
 	}
 }

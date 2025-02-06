@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/chtc/chtc-go-logger/config"
@@ -71,7 +72,7 @@ func runStreamMode() {
 	// Handle Ctrl+C for clean shutdown
 	go func() {
 		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, os.Interrupt, os.Kill) // Catch SIGINT (Ctrl+C) and SIGTERM
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM) // Catch SIGINT (Ctrl+C) and SIGTERM
 		<-sigChan
 		log.Info("Shutdown signal received, stopping clients and server...")
 		cancel() // Signal all goroutines to stop
@@ -159,4 +160,5 @@ func init() {
 
 	// Initialize the global logger and suppress error
 	_ = logger.LogInit(&overrideConfig)
+	LoadConfig()
 }
