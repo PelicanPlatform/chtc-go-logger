@@ -87,7 +87,7 @@ func StartMockClients(ctx context.Context, numClients int, serverPort int, wg *s
 	}
 }
 
-// Generate a weighted random status code and its corresponding response
+// Generate a weighted random server endpoint to submit requests to
 func generateRandomRequestPath() string {
 	cfg := GetConfig()
 	// Extract weights and pick a request path

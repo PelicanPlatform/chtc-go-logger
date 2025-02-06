@@ -82,7 +82,7 @@ func LoadConfig() error {
 			slog.Int("response_400", GlobalConfig.HTTPResponseWeights.Response400),
 			slog.Int("response_500", GlobalConfig.HTTPResponseWeights.Response500),
 		),
-		slog.Group("http_path_weights",
+		slog.Group("client_path_weights",
 			slog.Int("test", GlobalConfig.ClientPathWeights.Test),
 			slog.Int("staging", GlobalConfig.ClientPathWeights.Staging),
 			slog.Int("development", GlobalConfig.ClientPathWeights.Development),
