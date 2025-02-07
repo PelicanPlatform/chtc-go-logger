@@ -1,4 +1,4 @@
 resources:
   - deployment/
-#  - deployment-misconfigured/
+  - deployment-misconfigured/
   - namespace.yaml
