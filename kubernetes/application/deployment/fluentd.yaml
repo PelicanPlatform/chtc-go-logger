@@ -26,12 +26,16 @@ data:
     </filter>
 
     <match app.logs>
-      @type elasticsearch
-      host elasticsearch.elastic.svc.cluster.local
-      port 9200
-      logstash_format true
-      logstash_prefix fluentd
-      flush_interval 1s
+      @type forward
+      send_timeout 60s
+      recover_wait 10s
+      hard_timeout 60s
+      <server>
+        name central_fluentd
+        host fluentd.elastic.svc.cluster.local
+        port 24224
+      </server>
+
     </match>
 ---
 apiVersion: apps/v1

@@ -4,3 +4,4 @@ resources:
   - namespace.yaml
   - elastic.yaml
   - kibana.yaml
+  - fluentd.yaml
