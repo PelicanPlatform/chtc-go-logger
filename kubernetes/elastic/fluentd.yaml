@@ -14,12 +14,26 @@ data:
     </source>
 
     <match app.logs>
-      @type elasticsearch
-      host elasticsearch.elastic.svc.cluster.local
-      port 9200
-      logstash_format true
-      logstash_prefix fluentd
-      flush_interval 1s
+      @type copy
+      <store>
+        @type elasticsearch
+        host elasticsearch.elastic.svc.cluster.local
+        port 9200
+        logstash_format true
+        logstash_prefix fluentd
+        flush_interval 1s
+      </store>
+
+      <store>
+        @type file
+        path /var/log/fluentd/go-app
+        compress gzip
+        <buffer>
+          timekey 1d
+          timekey_use_utc true
+          timekey_wait 10m
+        </buffer>
+      </store>
     </match>
 ---
 apiVersion: apps/v1
@@ -53,10 +67,15 @@ spec:
           volumeMounts:
             - name: fluentd-config
               mountPath: /fluentd/etc
+            - name: log-storage
+              mountPath: /var/log/fluentd/
       volumes:
         - name: fluentd-config
           configMap:
             name: fluentd-config
+        - name: log-storage
+          emptyDir:
+            sizeLimit: 2Gi
 ---
 apiVersion: v1
 kind: Service

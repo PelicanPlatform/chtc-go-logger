@@ -17,6 +17,6 @@ spec:
         - name: go-log-client
           env:
             - name: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_500
-              value: "5"
+              value: "10"
             - name: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_200
               value: "1"

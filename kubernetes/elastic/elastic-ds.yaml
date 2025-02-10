@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: Elastic
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch.elastic.svc.cluster.local:9200
+    isDefault: true
+    jsonData:
+      includeFrozen: false
+      interval: Daily
+      timeField: '@timestamp'
