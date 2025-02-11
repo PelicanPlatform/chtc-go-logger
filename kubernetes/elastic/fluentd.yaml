@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  labels:
+    component: fluentd
+data:
+  fluent.conf: |
+    <source>
+      @type forward
+      port 24224
+      bind 0.0.0.0
+      tag app.logs
+    </source>
+
+    <match app.logs>
+      @type copy
+      <store>
+        @type elasticsearch
+        host elasticsearch.elastic.svc.cluster.local
+        port 9200
+        logstash_format true
+        logstash_prefix fluentd
+        flush_interval 1s
+      </store>
+
+      <store>
+        @type file
+        path /var/log/fluentd/go-app
+        compress gzip
+        <buffer>
+          timekey 1d
+          timekey_use_utc true
+          timekey_wait 10m
+        </buffer>
+      </store>
+    </match>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fluentd
+  labels:
+    component: fluentd
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      component: fluentd
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fluentd
+    spec:
+      containers:
+        - name: fluentd
+          image: hub.opensciencegrid.org/mwestphall/fluentd
+          resources:
+            requests:
+              memory: 500Mi
+              cpu: '0.5'
+            limits:
+              memory: 1Gi
+              cpu: '2'
+          volumeMounts:
+            - name: fluentd-config
+              mountPath: /fluentd/etc
+            - name: log-storage
+              mountPath: /var/log/fluentd/
+      volumes:
+        - name: fluentd-config
+          configMap:
+            name: fluentd-config
+        - name: log-storage
+          emptyDir:
+            sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fluentd
+  labels:
+    component: fluentd
+spec:
+  ports:
+  - port: 24224
+  selector:
+    component: fluentd
