@@ -5,6 +5,7 @@ resources:
   - elastic.yaml
   - fluentd.yaml
   - grafana.yaml
+  - kibana.yaml
 
 configMapGenerator:
   - name: grafana-es-config

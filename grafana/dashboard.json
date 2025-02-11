@@ -1,4 +1,41 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_ELASTIC",
+      "label": "Elastic",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "elasticsearch",
+      "pluginName": "Elasticsearch"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "datasource",
+      "id": "elasticsearch",
+      "name": "Elasticsearch",
+      "version": "1.0.0"
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.5.1"
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -18,7 +55,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": null,
   "links": [],
   "panels": [
     {
@@ -29,6 +66,392 @@
         "x": 0,
         "y": 0
       },
+      "id": 8,
+      "panels": [],
+      "title": "Ratio of Status Code Responses",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_ELASTIC}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 3,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ratio200"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ratio500"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "alias": "RecordCount",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "1m"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "status_code: *",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_ELASTIC}"
+          }
+        },
+        {
+          "alias": "Count500",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "1m"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_ELASTIC}"
+          },
+          "hide": false,
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "status_code: \"500\"",
+          "refId": "B",
+          "timeField": "@timestamp"
+        },
+        {
+          "alias": "Count200",
+          "bucketAggs": [
+            {
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "1m"
+              },
+              "type": "date_histogram"
+            }
+          ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_ELASTIC}"
+          },
+          "hide": false,
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "query": "status_code: \"200\"",
+          "refId": "C",
+          "timeField": "@timestamp"
+        }
+      ],
+      "title": "Status Code Ratios",
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Ratio200",
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Count200"
+                }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "RecordCount"
+                }
+              }
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            },
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Ratio500",
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Count500"
+                }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "RecordCount"
+                }
+              }
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Count200": true,
+              "Count500": true,
+              "RecordCount": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 10,
+      "panels": [],
+      "title": "Recent Error Logs",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${DS_ELASTIC}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 9,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "alias": "",
+          "bucketAggs": [],
+          "metrics": [
+            {
+              "id": "1",
+              "settings": {
+                "size": "500"
+              },
+              "type": "raw_data"
+            }
+          ],
+          "query": "status_code: \"500\"",
+          "refId": "A",
+          "timeField": "@timestamp",
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${DS_ELASTIC}"
+          }
+        }
+      ],
+      "title": "Recent Error Logs",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "_id": true,
+              "_index": true,
+              "_type": true,
+              "clientIP": true,
+              "highlight": true,
+              "sort": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
       "id": 6,
       "panels": [],
       "title": "Status Code Over Time",
@@ -37,7 +460,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "P5E7C4D821AAE0157"
+        "uid": "${DS_ELASTIC}"
       },
       "fieldConfig": {
         "defaults": {
@@ -63,7 +486,7 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -145,7 +568,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 18
       },
       "id": 1,
       "options": {
@@ -177,7 +600,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "metrics": [
             {
@@ -203,7 +626,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "hide": false,
           "metrics": [
@@ -230,7 +653,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "hide": false,
           "metrics": [
@@ -253,7 +676,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 26
       },
       "id": 5,
       "panels": [],
@@ -263,7 +686,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "P5E7C4D821AAE0157"
+        "uid": "${DS_ELASTIC}"
       },
       "fieldConfig": {
         "defaults": {
@@ -371,7 +794,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 10
+        "y": 27
       },
       "id": 3,
       "options": {
@@ -403,7 +826,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "metrics": [
             {
@@ -429,7 +852,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "hide": false,
           "metrics": [
@@ -456,7 +879,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "hide": false,
           "metrics": [
@@ -476,7 +899,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "P5E7C4D821AAE0157"
+        "uid": "${DS_ELASTIC}"
       },
       "fieldConfig": {
         "defaults": {
@@ -584,7 +1007,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 10
+        "y": 27
       },
       "id": 4,
       "options": {
@@ -616,7 +1039,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "metrics": [
             {
@@ -642,7 +1065,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "hide": false,
           "metrics": [
@@ -669,7 +1092,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "hide": false,
           "metrics": [
@@ -689,7 +1112,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "P5E7C4D821AAE0157"
+        "uid": "${DS_ELASTIC}"
       },
       "fieldConfig": {
         "defaults": {
@@ -797,7 +1220,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 10
+        "y": 27
       },
       "id": 2,
       "options": {
@@ -829,7 +1252,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "metrics": [
             {
@@ -855,7 +1278,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "hide": false,
           "metrics": [
@@ -882,7 +1305,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "P5E7C4D821AAE0157"
+            "uid": "${DS_ELASTIC}"
           },
           "hide": false,
           "metrics": [
@@ -900,7 +1323,6 @@
       "type": "timeseries"
     }
   ],
-  "preload": false,
   "refresh": "",
   "schemaVersion": 40,
   "tags": [],
@@ -908,13 +1330,13 @@
     "list": []
   },
   "time": {
-    "from": "now-30m",
-    "to": "now"
+    "from": "2025-02-11T15:19:45.045Z",
+    "to": "2025-02-11T17:19:45.045Z"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Status Code vs Time",
-  "uid": "decnob7v9bqiod",
-  "version": 12,
+  "uid": "cecrbi9rxy2v4e",
+  "version": 6,
   "weekStart": ""
 }
