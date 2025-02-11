@@ -2,9 +2,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: go-log-client
+  name: go-logging-server
   labels:
-    component: go-log-client
+    component: go-logging-server
 spec:
   replicas: 0
   template:
@@ -14,7 +14,7 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
       containers:
-        - name: go-log-client
+        - name: go-logging-server
           env:
             - name: LOG_GENERATOR__HTTP_RESPONSE_WEIGHTS__RESPONSE_500
               value: "10"
