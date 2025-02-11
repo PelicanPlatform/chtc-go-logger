@@ -1,4 +1,4 @@
-namePrefix: misconfigured-
+namePrefix: next-
 
 resources:
 - ../deployment

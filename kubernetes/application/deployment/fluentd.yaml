@@ -41,27 +41,27 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: go-log-client
+  name: go-logging-server
   labels:
-    component: go-log-client
+    component: go-logging-server
 spec:
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      component: go-log-client
+      component: go-logging-server
   replicas: 5
   template:
     metadata:
       labels:
-        component: go-log-client
+        component: go-logging-server
     spec:
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
       containers:
-        - name: go-log-client
+        - name: go-logging-server
           image: hub.opensciencegrid.org/mwestphall/go-log-client
           args:
             - stream
