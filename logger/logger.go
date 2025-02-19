@@ -26,7 +26,6 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/chtc/chtc-go-logger/config"
 	handler "github.com/chtc/chtc-go-logger/logger/handlers"
@@ -149,8 +148,7 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 		handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
 	}
 
-	dispatchHandler := &LogDispatcher{handlers: handlers}
-	return slog.New(handler.NewLogStatsHandler(*cfg, dispatchHandler)), nil
+	return slog.New(handler.NewLogStatsHandler(*cfg, handlers)), nil
 }
 
 // GetLogger returns the global logger. If `LogInit` is not called, it initializes the logger with default settings.
@@ -168,9 +166,8 @@ func GetLogger() *slog.Logger {
 
 // ContextAwareLogger wraps slog.Logger to support context-based logging
 type ContextAwareLogger struct {
-	mu          sync.Mutex
 	logger      *slog.Logger
-	statHandler *handler.LogStatsHandler
+	statHandler handler.LogStatGetter
 }
 
 // GetContextLogger returns the global context logger. If `LogInit` is not called, it initializes the logger with default settings.
@@ -181,7 +178,7 @@ func GetContextLogger() *ContextAwareLogger {
 			panic("Failed to initialize default logger: " + err.Error())
 		}
 	}
-	return &ContextAwareLogger{logger: log, statHandler: log.Handler().(*handler.LogStatsHandler)}
+	return &ContextAwareLogger{logger: log, statHandler: log.Handler().(handler.LogStatGetter)}
 }
 
 // NewContextAwareLogger creates a logger with context support by internally calling NewLogger
@@ -190,7 +187,12 @@ func NewContextAwareLogger(params ...interface{}) (*ContextAwareLogger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ContextAwareLogger{logger: newLogger, statHandler: newLogger.Handler().(*handler.LogStatsHandler)}, err
+	return &ContextAwareLogger{logger: newLogger, statHandler: newLogger.Handler().(handler.LogStatGetter)}, err
+}
+
+// SetErrorCallback
+func (l *ContextAwareLogger) SetErrorCallback(callback handler.LogStatsCallback) {
+	l.statHandler.SetStatsCallbackHandler(callback)
 }
 
 // Log logs a message at the specified level with context attributes and additional attributes
@@ -212,36 +214,20 @@ func (l *ContextAwareLogger) Log(ctx context.Context, level slog.Level, msg stri
 }
 
 // Convenience methods for log levels
-func (l *ContextAwareLogger) Info(ctx context.Context, msg string, attrs ...slog.Attr) handler.LogStats {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
+func (l *ContextAwareLogger) Info(ctx context.Context, msg string, attrs ...slog.Attr) {
 	l.Log(ctx, slog.LevelInfo, msg, attrs...)
-	return l.statHandler.GetLatestStats()
 }
 
-func (l *ContextAwareLogger) Debug(ctx context.Context, msg string, attrs ...slog.Attr) handler.LogStats {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
+func (l *ContextAwareLogger) Debug(ctx context.Context, msg string, attrs ...slog.Attr) {
 	l.Log(ctx, slog.LevelDebug, msg, attrs...)
-	return l.statHandler.GetLatestStats()
 }
 
-func (l *ContextAwareLogger) Warn(ctx context.Context, msg string, attrs ...slog.Attr) handler.LogStats {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
+func (l *ContextAwareLogger) Warn(ctx context.Context, msg string, attrs ...slog.Attr) {
 	l.Log(ctx, slog.LevelWarn, msg, attrs...)
-	return l.statHandler.GetLatestStats()
 }
 
-func (l *ContextAwareLogger) Error(ctx context.Context, msg string, attrs ...slog.Attr) handler.LogStats {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
+func (l *ContextAwareLogger) Error(ctx context.Context, msg string, attrs ...slog.Attr) {
 	l.Log(ctx, slog.LevelError, msg, attrs...)
-	return l.statHandler.GetLatestStats()
 }
 
 // extractContextAttributes extracts key-value pairs from a context.Context
@@ -262,52 +248,6 @@ func extractContextAttributes(ctx context.Context) []slog.Attr {
 		attrs = append(attrs, slog.String(k, v))
 	}
 	return attrs
-}
-
-// --- Handlers ---
-
-// LogDispatcher forwards logs to multiple handlers
-type LogDispatcher struct {
-	handlers []slog.Handler
-}
-
-// Required by slog.Handler interface: Determines if this dispatcher processes a log record at the given level
-func (d *LogDispatcher) Enabled(ctx context.Context, level slog.Level) bool {
-	for _, handler := range d.handlers {
-		if handler.Enabled(ctx, level) {
-			return true
-		}
-	}
-	return false
-}
-
-// Required by slog.Handler interface: Processes and forwards a log record to all handlers
-func (d *LogDispatcher) Handle(ctx context.Context, r slog.Record) error {
-	var errs []error
-	for _, handler := range d.handlers {
-		if err := handler.Handle(ctx, r); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errors.Join(errs...)
-}
-
-// Required by slog.Handler interface: Groups attributes under a namespace for all handlers
-func (d *LogDispatcher) WithGroup(name string) slog.Handler {
-	newHandlers := make([]slog.Handler, len(d.handlers))
-	for i, handler := range d.handlers {
-		newHandlers[i] = handler.WithGroup(name)
-	}
-	return &LogDispatcher{handlers: newHandlers}
-}
-
-// Required by slog.Handler interface: Adds attributes to all handlers
-func (d *LogDispatcher) WithAttrs(attrs []slog.Attr) slog.Handler {
-	newHandlers := make([]slog.Handler, len(d.handlers))
-	for i, handler := range d.handlers {
-		newHandlers[i] = handler.WithAttrs(attrs)
-	}
-	return &LogDispatcher{handlers: newHandlers}
 }
 
 // ColorConsoleHandler provides color-coded console logging

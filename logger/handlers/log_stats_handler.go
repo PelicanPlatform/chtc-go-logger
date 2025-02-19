@@ -19,6 +19,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"path"
 	"time"
@@ -35,26 +36,38 @@ type LogError struct {
 type LogStats struct {
 	Duration  time.Duration
 	DiskAvail uint64
-	Error     *LogError
+	Errors    []LogError
 }
+
+type LogStatsCallback func(stats LogStats)
 
 // Handler that wraps another slog handler, forwarding its output to syslog
 type LogStatsHandler struct {
-	handler     slog.Handler
-	logConfig   config.Config
-	latestStats LogStats
+	handlers      []slog.Handler
+	logConfig     config.Config
+	latestStats   LogStats
+	statsCallback LogStatsCallback
+}
+
+type LogStatGetter interface {
+	GetLatestStats() LogStats
+	SetStatsCallbackHandler(LogStatsCallback)
 }
 
 func (s *LogStatsHandler) GetLatestStats() LogStats {
 	return s.latestStats
 }
 
+func (s *LogStatsHandler) SetStatsCallbackHandler(callback LogStatsCallback) {
+	s.statsCallback = callback
+}
+
 // NewLogStatsHandler constructs a new metrics-collecting log handler
 // LogStatsHandler wraps the handler given in the constructor, collecting
 // info such as log message duration and disk usage with each log message
-func NewLogStatsHandler(logConfig config.Config, baseHandler slog.Handler) slog.Handler {
+func NewLogStatsHandler(logConfig config.Config, handlers []slog.Handler) slog.Handler {
 	handler := LogStatsHandler{
-		handler:   baseHandler,
+		handlers:  handlers,
 		logConfig: logConfig,
 	}
 
@@ -62,7 +75,12 @@ func NewLogStatsHandler(logConfig config.Config, baseHandler slog.Handler) slog.
 }
 
 func (s *LogStatsHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return s.handler.Enabled(ctx, level)
+	for _, handler := range s.handlers {
+		if handler.Enabled(ctx, level) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *LogStatsHandler) statLogFS() (uint64, error) {
@@ -85,11 +103,14 @@ func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
 	start := time.Now()
 
 	// Call into the actual log handler, checking for errors on result
-	err := s.handler.Handle(ctx, r)
-	if err != nil {
-		stats.Error = &LogError{
-			Err:    err,
-			Record: r,
+	errs := make([]LogError, 0, len(s.handlers))
+	for _, handler := range s.handlers {
+		err := handler.Handle(ctx, r)
+		if err != nil {
+			errs = append(errs, LogError{
+				Err:    err,
+				Record: r,
+			})
 		}
 	}
 
@@ -99,10 +120,10 @@ func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
 		usage, err := s.statLogFS()
 		stats.DiskAvail = usage
 		if err != nil {
-			stats.Error = &LogError{
+			errs = append(errs, LogError{
 				Err:    err,
 				Record: r,
-			}
+			})
 		}
 	}
 
@@ -110,16 +131,48 @@ func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
 	elapsed := time.Since(start)
 	stats.Duration = elapsed
 
+	stats.Errors = errs
+
 	s.latestStats = stats
-	return err
+
+	if s.statsCallback != nil {
+		s.statsCallback(stats)
+	}
+
+	if len(errs) == 0 {
+		return nil
+	}
+
+	// return the errors.join of all logging errors that occurred
+	allErrs := make([]error, len(errs))
+	for idx, err := range errs {
+		allErrs[idx] = err.Err
+	}
+	return errors.Join(allErrs...)
 }
 
 // Required by slog.Handler interface: Groups attributes under a namespace for the writing handler
 func (s *LogStatsHandler) WithGroup(name string) slog.Handler {
-	return &LogStatsHandler{handler: s.handler.WithGroup(name)}
+	newHandlers := make([]slog.Handler, len(s.handlers))
+	for i, handler := range s.handlers {
+		newHandlers[i] = handler.WithGroup(name)
+	}
+	return &LogStatsHandler{
+		handlers:      newHandlers,
+		statsCallback: s.statsCallback,
+		logConfig:     s.logConfig,
+	}
 }
 
 // Required by slog.Handler interface: Adds attributes to the writing handler
 func (s *LogStatsHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &LogStatsHandler{handler: s.handler.WithAttrs(attrs)}
+	newHandlers := make([]slog.Handler, len(s.handlers))
+	for i, handler := range s.handlers {
+		newHandlers[i] = handler.WithAttrs(attrs)
+	}
+	return &LogStatsHandler{
+		handlers:      newHandlers,
+		statsCallback: s.statsCallback,
+		logConfig:     s.logConfig,
+	}
 }
