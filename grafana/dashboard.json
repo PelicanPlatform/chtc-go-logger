@@ -1,41 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_ELASTIC",
-      "label": "Elastic",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "elasticsearch",
-      "pluginName": "Elasticsearch"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "datasource",
-      "id": "elasticsearch",
-      "name": "Elasticsearch",
-      "version": "1.0.0"
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "11.5.1"
-    },
-    {
-      "type": "panel",
-      "id": "table",
-      "name": "Table",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -55,16 +18,41 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 1,
   "links": [],
   "panels": [
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 11,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# Sample Log Generator Analytics\n",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.5.1",
+      "title": "",
+      "type": "text"
+    },
     {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 2
       },
       "id": 8,
       "panels": [],
@@ -74,7 +62,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "${DS_ELASTIC}"
+        "uid": "P5E7C4D821AAE0157"
       },
       "fieldConfig": {
         "defaults": {
@@ -166,7 +154,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 3
       },
       "id": 7,
       "options": {
@@ -196,6 +184,10 @@
               "type": "date_histogram"
             }
           ],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "P5E7C4D821AAE0157"
+          },
           "metrics": [
             {
               "id": "1",
@@ -204,11 +196,7 @@
           ],
           "query": "status_code: *",
           "refId": "A",
-          "timeField": "@timestamp",
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
-          }
+          "timeField": "@timestamp"
         },
         {
           "alias": "Count500",
@@ -224,7 +212,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -251,7 +239,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -340,7 +328,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 11
       },
       "id": 10,
       "panels": [],
@@ -350,7 +338,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "${DS_ELASTIC}"
+        "uid": "P5E7C4D821AAE0157"
       },
       "fieldConfig": {
         "defaults": {
@@ -385,7 +373,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 12
       },
       "id": 9,
       "options": {
@@ -405,6 +393,10 @@
         {
           "alias": "",
           "bucketAggs": [],
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "P5E7C4D821AAE0157"
+          },
           "metrics": [
             {
               "id": "1",
@@ -416,11 +408,7 @@
           ],
           "query": "status_code: \"500\"",
           "refId": "A",
-          "timeField": "@timestamp",
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
-          }
+          "timeField": "@timestamp"
         }
       ],
       "title": "Recent Error Logs",
@@ -450,7 +438,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 19
       },
       "id": 6,
       "panels": [],
@@ -460,7 +448,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "${DS_ELASTIC}"
+        "uid": "P5E7C4D821AAE0157"
       },
       "fieldConfig": {
         "defaults": {
@@ -568,7 +556,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 20
       },
       "id": 1,
       "options": {
@@ -600,7 +588,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "metrics": [
             {
@@ -626,7 +614,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -653,7 +641,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -676,7 +664,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 28
       },
       "id": 5,
       "panels": [],
@@ -686,7 +674,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "${DS_ELASTIC}"
+        "uid": "P5E7C4D821AAE0157"
       },
       "fieldConfig": {
         "defaults": {
@@ -794,7 +782,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 27
+        "y": 29
       },
       "id": 3,
       "options": {
@@ -826,7 +814,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "metrics": [
             {
@@ -852,7 +840,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -879,7 +867,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -899,7 +887,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "${DS_ELASTIC}"
+        "uid": "P5E7C4D821AAE0157"
       },
       "fieldConfig": {
         "defaults": {
@@ -1007,7 +995,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 27
+        "y": 29
       },
       "id": 4,
       "options": {
@@ -1039,7 +1027,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "metrics": [
             {
@@ -1065,7 +1053,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -1092,7 +1080,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -1112,7 +1100,7 @@
     {
       "datasource": {
         "type": "elasticsearch",
-        "uid": "${DS_ELASTIC}"
+        "uid": "P5E7C4D821AAE0157"
       },
       "fieldConfig": {
         "defaults": {
@@ -1220,7 +1208,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 27
+        "y": 29
       },
       "id": 2,
       "options": {
@@ -1252,7 +1240,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "metrics": [
             {
@@ -1278,7 +1266,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -1305,7 +1293,7 @@
           ],
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${DS_ELASTIC}"
+            "uid": "P5E7C4D821AAE0157"
           },
           "hide": false,
           "metrics": [
@@ -1323,6 +1311,7 @@
       "type": "timeseries"
     }
   ],
+  "preload": false,
   "refresh": "",
   "schemaVersion": 40,
   "tags": [],
@@ -1330,13 +1319,13 @@
     "list": []
   },
   "time": {
-    "from": "2025-02-11T15:19:45.045Z",
-    "to": "2025-02-11T17:19:45.045Z"
+    "from": "now-15m",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Status Code vs Time",
   "uid": "cecrbi9rxy2v4e",
-  "version": 6,
+  "version": 3,
   "weekStart": ""
 }
