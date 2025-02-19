@@ -53,6 +53,18 @@ func LogInit(params ...interface{}) error {
 
 	// Create and assign the global logger
 	log, err = createLogger(cfg)
+
+	if err != nil {
+		return err
+	}
+
+	if cfg.HealthCheck.Enabled {
+
+		ctx, _ := context.WithCancel(context.Background())
+		StartHealthCheckMonitor(ctx, cfg)
+
+	}
+
 	return err
 }
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -35,11 +36,20 @@ type SyslogOutputConfig struct {
 	JSONOutput bool   `mapstructure:"json_object"` // If true, output JSON objects
 }
 
+type HealthCheckConfig struct {
+	Enabled                  bool          `mapstructure:"enabled"`
+	LogPeriodicity           time.Duration `mapstructure:"log_periodicity"`
+	ElasticsearchPeriodicity time.Duration `mapstructure:"elasticsearch_periodicity"`
+	ElasticsearchIndex       string        `mapstructure:"elasticsearch_index"`
+	ElasticsearchURL         string        `mapstructure:"elasticsearch_url"`
+}
+
 type Config struct {
 	LogLevel      string              `mapstructure:"log_level"`      // Log level (e.g., DEBUG, INFO, WARN, ERROR)
 	ConsoleOutput ConsoleOutputConfig `mapstructure:"console_output"` // Console output settings
 	FileOutput    FileOutputConfig    `mapstructure:"file_output"`    // File output settings
 	SyslogOutput  SyslogOutputConfig  `mapstructure:"syslog_output"`  // Syslog output settings
+	HealthCheck   HealthCheckConfig   `mapstructure:"health_check"`   // Health Check Settings
 }
 
 // LoadConfig loads and merges the configuration in this order:

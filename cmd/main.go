@@ -154,7 +154,14 @@ func runBurstMode() {
 func init() {
 	overrideConfig := config.Config{
 		FileOutput: config.FileOutputConfig{
-			FilePath: "/var/log/chtc-logger.log",
+			FilePath: "/workspaces/logger_config_cleanup/chtc-logger.log",
+		},
+		HealthCheck: config.HealthCheckConfig{
+			Enabled:                  true,
+			LogPeriodicity:           10 * time.Second,
+			ElasticsearchPeriodicity: 10 * time.Second,
+			ElasticsearchIndex:       "my-app-logs",
+			ElasticsearchURL:         "http://host.docker.internal:9200",
 		},
 	}
 
