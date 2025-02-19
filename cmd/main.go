@@ -154,7 +154,7 @@ func runBurstMode() {
 func init() {
 	overrideConfig := config.Config{
 		FileOutput: config.FileOutputConfig{
-			FilePath: "/workspaces/logger_config_cleanup/chtc-logger.log",
+			FilePath: "/var/log/chtc-logger.log",
 		},
 		HealthCheck: config.HealthCheckConfig{
 			Enabled:                  true,
