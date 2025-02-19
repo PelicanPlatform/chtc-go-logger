@@ -46,7 +46,6 @@ func StartHealthCheckMonitor(ctx context.Context, cfg *config.Config) {
 		slog.String("component", "healthcheck"),
 	)
 
-	// Start goroutines
 	go logHealthChecks(ctx, cfg, log)
 	go queryElasticsearch(ctx, cfg, log)
 }
@@ -71,6 +70,7 @@ func logHealthChecks(ctx context.Context, cfg *config.Config, log *slog.Logger) 
 	for {
 		select {
 		case <-ctx.Done():
+			log.Info("logHealthChecks exiting")
 			return
 		case t := <-ticker.C:
 			status := lastHealthCheck.Load()
@@ -100,9 +100,10 @@ func queryElasticsearch(ctx context.Context, cfg *config.Config, log *slog.Logge
 	for {
 		select {
 		case <-ctx.Done():
+			log.Info("queryElasticsearch exiting")
 			return
 		case <-ticker.C:
-			timestamp, err := fetchLastLogTimestamp(cfg, log)
+			timestamp, err := fetchLastLogTimestamp(ctx, cfg, log)
 			newStatus := &lastHealthCheckStatus{Timestamp: timestamp, Err: err}
 
 			// Atomically update last health check status
@@ -119,7 +120,7 @@ func queryElasticsearch(ctx context.Context, cfg *config.Config, log *slog.Logge
 }
 
 // fetchLastLogTimestamp queries Elasticsearch for the latest health check log timestamp
-func fetchLastLogTimestamp(cfg *config.Config, log *slog.Logger) (time.Time, error) {
+func fetchLastLogTimestamp(ctx context.Context, cfg *config.Config, log *slog.Logger) (time.Time, error) {
 	query := `{
 		"size": 1,
 		"sort": [{ "timestamp": "desc" }],
@@ -127,7 +128,7 @@ func fetchLastLogTimestamp(cfg *config.Config, log *slog.Logger) (time.Time, err
 	}`
 
 	res, err := esClient.Search(
-		esClient.Search.WithContext(context.Background()),
+		esClient.Search.WithContext(ctx),
 		esClient.Search.WithIndex(cfg.HealthCheck.ElasticsearchIndex),
 		esClient.Search.WithBody(strings.NewReader(query)),
 		esClient.Search.WithFilterPath("hits.hits._source.timestamp"),
@@ -139,7 +140,7 @@ func fetchLastLogTimestamp(cfg *config.Config, log *slog.Logger) (time.Time, err
 	defer res.Body.Close()
 
 	if res.IsError() {
-		return time.Time{}, fmt.Errorf("Elasticsearch query failed: %s", res.String())
+		return time.Time{}, fmt.Errorf("elasticsearch query failed: %s", res.String())
 	}
 
 	var esResp struct {
