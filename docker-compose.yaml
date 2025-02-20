@@ -3,3 +3,12 @@ services:
     build:
       context: .
       dockerfile: tests.Dockerfile
+    volumes:
+      - testvol:/mnt/small-test-vol
+
+volumes:
+  testvol:
+    driver_opts:
+      type: "tmpfs"
+      o: "size=24K"
+      device: "tmpfs"
