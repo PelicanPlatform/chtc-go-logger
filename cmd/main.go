@@ -27,7 +27,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chtc/chtc-go-logger/config"
 	"github.com/chtc/chtc-go-logger/logger"
 )
 
@@ -154,13 +153,7 @@ func runBurstMode() {
 }
 
 func init() {
-	overrideConfig := config.Config{
-		FileOutput: config.FileOutputConfig{
-			FilePath: "/tmp/chtc-logger.log",
-		},
-	}
-
 	// Initialize the global logger and suppress error
-	_ = logger.LogInit(&overrideConfig)
+	_ = logger.LogInit()
 	LoadConfig()
 }

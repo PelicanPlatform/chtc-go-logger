@@ -29,8 +29,9 @@ import (
 )
 
 type LogError struct {
-	Err    error
-	Record slog.Record
+	Err     error
+	Record  slog.Record
+	Handler NamedHandler
 }
 
 type LogStats struct {
@@ -43,7 +44,7 @@ type LogStatsCallback func(stats LogStats)
 
 // Handler that wraps another slog handler, forwarding its output to syslog
 type LogStatsHandler struct {
-	handlers      []slog.Handler
+	handlers      []NamedHandler
 	logConfig     config.Config
 	latestStats   LogStats
 	statsCallback LogStatsCallback
@@ -65,7 +66,7 @@ func (s *LogStatsHandler) SetStatsCallbackHandler(callback LogStatsCallback) {
 // NewLogStatsHandler constructs a new metrics-collecting log handler
 // LogStatsHandler wraps the handler given in the constructor, collecting
 // info such as log message duration and disk usage with each log message
-func NewLogStatsHandler(logConfig config.Config, handlers []slog.Handler) slog.Handler {
+func NewLogStatsHandler(logConfig config.Config, handlers []NamedHandler) slog.Handler {
 	handler := LogStatsHandler{
 		handlers:  handlers,
 		logConfig: logConfig,
@@ -108,8 +109,9 @@ func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
 		err := handler.Handle(ctx, r)
 		if err != nil {
 			errs = append(errs, LogError{
-				Err:    err,
-				Record: r,
+				Err:     err,
+				Record:  r,
+				Handler: handler,
 			})
 		}
 	}
@@ -153,9 +155,12 @@ func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
 
 // Required by slog.Handler interface: Groups attributes under a namespace for the writing handler
 func (s *LogStatsHandler) WithGroup(name string) slog.Handler {
-	newHandlers := make([]slog.Handler, len(s.handlers))
+	newHandlers := make([]NamedHandler, len(s.handlers))
 	for i, handler := range s.handlers {
-		newHandlers[i] = handler.WithGroup(name)
+		newHandlers[i] = NamedHandler{
+			handler.WithGroup(name),
+			handler.HandlerType,
+		}
 	}
 	return &LogStatsHandler{
 		handlers:      newHandlers,
@@ -166,9 +171,12 @@ func (s *LogStatsHandler) WithGroup(name string) slog.Handler {
 
 // Required by slog.Handler interface: Adds attributes to the writing handler
 func (s *LogStatsHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	newHandlers := make([]slog.Handler, len(s.handlers))
+	newHandlers := make([]NamedHandler, len(s.handlers))
 	for i, handler := range s.handlers {
-		newHandlers[i] = handler.WithAttrs(attrs)
+		newHandlers[i] = NamedHandler{
+			handler.WithAttrs(attrs),
+			handler.HandlerType,
+		}
 	}
 	return &LogStatsHandler{
 		handlers:      newHandlers,

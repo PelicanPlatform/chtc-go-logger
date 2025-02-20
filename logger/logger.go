@@ -94,17 +94,19 @@ func parseParams(params ...interface{}) (*config.Config, error) {
 
 // createLogger creates a logger using the provided configuration.
 func createLogger(cfg *config.Config) (*slog.Logger, error) {
-	var handlers []slog.Handler
+	var handlers []handler.NamedHandler
 
 	// Console handler
 	if cfg.ConsoleOutput.Enabled {
+		handler := handler.NamedHandler{HandlerType: handler.HandlerConsole}
 		if cfg.ConsoleOutput.JSONOutput {
-			handlers = append(handlers, slog.NewJSONHandler(os.Stdout, nil))
+			handler.Handler = slog.NewJSONHandler(os.Stdout, nil)
 		} else if cfg.ConsoleOutput.Colors {
-			handlers = append(handlers, &ColorConsoleHandler{output: os.Stdout})
+			handler.Handler = &ColorConsoleHandler{output: os.Stdout}
 		} else {
-			handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
+			handler.Handler = slog.NewTextHandler(os.Stdout, nil)
 		}
+		handlers = append(handlers, handler)
 	}
 
 	// File handler
@@ -112,13 +114,16 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 		if cfg.FileOutput.FilePath == "" {
 			panic("File output enabled but file path is empty")
 		}
-		handlers = append(handlers, slog.NewJSONHandler(&lumberjack.Logger{
-			Filename:   cfg.FileOutput.FilePath,
-			MaxSize:    cfg.FileOutput.MaxFileSize,
-			MaxBackups: cfg.FileOutput.MaxBackups,
-			MaxAge:     cfg.FileOutput.MaxAgeDays,
-			Compress:   true,
-		}, nil))
+		handlers = append(handlers, handler.NamedHandler{
+			Handler: slog.NewJSONHandler(&lumberjack.Logger{
+				Filename:   cfg.FileOutput.FilePath,
+				MaxSize:    cfg.FileOutput.MaxFileSize,
+				MaxBackups: cfg.FileOutput.MaxBackups,
+				MaxAge:     cfg.FileOutput.MaxAgeDays,
+				Compress:   true,
+			}, nil),
+			HandlerType: handler.HandlerFile,
+		})
 	}
 
 	// Syslog handler
@@ -140,12 +145,12 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 			return nil, err
 		}
 
-		handlers = append(handlers, syslogHandler)
+		handlers = append(handlers, handler.NamedHandler{Handler: syslogHandler, HandlerType: handler.HandlerSyslog})
 	}
 
 	// Fallback to a basic console logger if no handlers are configured
 	if len(handlers) == 0 {
-		handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
+		handlers = append(handlers, handler.NamedHandler{Handler: slog.NewTextHandler(os.Stdout, nil), HandlerType: handler.HandlerSyslog})
 	}
 
 	return slog.New(handler.NewLogStatsHandler(*cfg, handlers)), nil
