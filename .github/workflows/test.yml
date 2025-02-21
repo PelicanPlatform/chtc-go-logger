@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: golang:1.23
-      options: --shm-size=24kb --user 1000:1000 # Need to set a low shm size for 'out of storage' tests
+      options: --shm-size=24kb # Need to set a low shm size for 'out of storage' tests
 
     steps:
       # Checkout the code
@@ -42,6 +42,13 @@ jobs:
       - name: Install dependencies
         run: go mod tidy
 
-      # Run tests
+      # Create an unprivileged user to run tests as
+      - name: Create non-root user
+        run: |
+          useradd gouser
+          mkdir -p /home/gouser/.cache/go-build
+          chown gouser /home/gouser/.cache/go-build/
+
+      # Run tests unprivileged
       - name: Run tests
-        run: go test ./... -v
+        run: su -c 'go test ./... -v' gouser
