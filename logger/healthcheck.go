@@ -11,6 +11,7 @@ import (
 
 	"github.com/chtc/chtc-go-logger/config"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/google/uuid"
 )
 
 // lastHealthCheckStatus stores the last known health check timestamp and any query errors
@@ -25,25 +26,32 @@ var lastHealthCheck atomic.Pointer[lastHealthCheckStatus]
 // Global Elasticsearch client (initialized once)
 var esClient *elasticsearch.Client
 
+// UUID for the service instance
+var instanceUUID = uuid.New().String()
+
 // StartHealthCheckMonitor starts the health check monitoring
 func StartHealthCheckMonitor(ctx context.Context, cfg *config.Config) {
 	log := GetLogger()
 
 	// Initialize atomic pointer with a default value
-	lastHealthCheck.Store(&lastHealthCheckStatus{})
+	lastHealthCheck.Store(&lastHealthCheckStatus{
+		Timestamp: time.Now().UTC(), // Current UTC timestamp
+		Err:       nil,
+	})
 
 	// Initialize Elasticsearch client
 	if err := initElasticsearchClient(cfg); err != nil {
 		log.Error("Failed to initialize Elasticsearch client",
 			slog.String("component", "healthcheck"),
 			slog.String("error", err.Error()),
+			slog.String("instance_uuid", instanceUUID),
 		)
 		return
 	}
 
-	// Debug log indicating the goroutines are starting
 	log.Debug("Starting goroutines for health check monitoring",
 		slog.String("component", "healthcheck"),
+		slog.String("instance_uuid", instanceUUID),
 	)
 
 	go logHealthChecks(ctx, cfg, log)
@@ -54,7 +62,7 @@ func StartHealthCheckMonitor(ctx context.Context, cfg *config.Config) {
 func initElasticsearchClient(cfg *config.Config) error {
 	var err error
 	esClient, err = elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: []string{cfg.HealthCheck.ElasticsearchURL}, // Fetch from config
+		Addresses: []string{cfg.HealthCheck.ElasticsearchURL},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to initialize Elasticsearch client: %w", err)
@@ -70,24 +78,19 @@ func logHealthChecks(ctx context.Context, cfg *config.Config, log *slog.Logger) 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("logHealthChecks exiting")
+			log.Info("logHealthChecks exiting",
+				slog.String("instance_uuid", instanceUUID),
+			)
 			return
 		case t := <-ticker.C:
 			status := lastHealthCheck.Load()
-			if status.Err != nil {
-				log.Warn("Health check issue",
-					slog.String("component", "healthcheck"),
-					slog.Time("timestamp", t),
-					slog.Time("last_received", status.Timestamp),
-					slog.String("error", status.Err.Error()),
-				)
-			} else {
-				log.Info("Health check log",
-					slog.String("component", "healthcheck"),
-					slog.Time("timestamp", t),
-					slog.Time("last_received", status.Timestamp),
-				)
-			}
+
+			log.Info("Health check log",
+				slog.String("component", "healthcheck"),
+				slog.Time("timestamp", t),
+				slog.Time("last_received", status.Timestamp),
+				slog.String("instance_uuid", instanceUUID),
+			)
 		}
 	}
 }
@@ -100,19 +103,21 @@ func queryElasticsearch(ctx context.Context, cfg *config.Config, log *slog.Logge
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("queryElasticsearch exiting")
+			log.Info("queryElasticsearch exiting",
+				slog.String("instance_uuid", instanceUUID),
+			)
 			return
 		case <-ticker.C:
 			timestamp, err := fetchLastLogTimestamp(ctx, cfg, log)
 			newStatus := &lastHealthCheckStatus{Timestamp: timestamp, Err: err}
 
-			// Atomically update last health check status
 			lastHealthCheck.Store(newStatus)
 
 			if err != nil {
 				log.Error("Failed to fetch last log timestamp",
 					slog.String("component", "healthcheck"),
 					slog.String("error", err.Error()),
+					slog.String("instance_uuid", instanceUUID),
 				)
 			}
 		}
@@ -121,18 +126,25 @@ func queryElasticsearch(ctx context.Context, cfg *config.Config, log *slog.Logge
 
 // fetchLastLogTimestamp queries Elasticsearch for the latest health check log timestamp
 func fetchLastLogTimestamp(ctx context.Context, cfg *config.Config, log *slog.Logger) (time.Time, error) {
-	query := `{
+	query := fmt.Sprintf(`{
 		"size": 1,
 		"sort": [{ "timestamp": "desc" }],
+		"query": {
+			"bool": {
+				"must": [
+					{ "term": { "instance_uuid.keyword": "%s" }},
+					{ "term": { "msg.keyword": "Health check log" }}
+				]
+			}
+		},
 		"_source": ["timestamp"]
-	}`
+	}`, instanceUUID)
 
 	res, err := esClient.Search(
 		esClient.Search.WithContext(ctx),
 		esClient.Search.WithIndex(cfg.HealthCheck.ElasticsearchIndex),
 		esClient.Search.WithBody(strings.NewReader(query)),
 		esClient.Search.WithFilterPath("hits.hits._source.timestamp"),
-		esClient.Search.WithSize(1),
 	)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to execute Elasticsearch query: %w", err)
@@ -168,6 +180,7 @@ func fetchLastLogTimestamp(ctx context.Context, cfg *config.Config, log *slog.Lo
 
 	log.Debug("Successfully retrieved last health check timestamp",
 		slog.String("component", "healthcheck"),
+		slog.String("instance_uuid", instanceUUID),
 		slog.Time("last_timestamp", parsedTime),
 	)
 
