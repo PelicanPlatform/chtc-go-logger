@@ -214,3 +214,47 @@ func TestFileOutputLowSpaceWarning(t *testing.T) {
 		t.Fatal("Expected to detect >0 available disk space")
 	}
 }
+
+// Redirect stdout to a new file handler, close it to trigger an error when
+// writing via the console logger, then check that those errors are reported
+func TestCloseStdoutTextLogError(t *testing.T) {
+	// TODO is there a better way to forcibly trigger a console write error?
+	testDir := t.TempDir()
+
+	f, err := os.Create(path.Join(testDir, "stdout"))
+	if err != nil {
+		t.Fatalf("Unable to create test stdout")
+	}
+	realStdout := os.Stdout
+	defer (func() { os.Stdout = realStdout })()
+	os.Stdout = f
+	f.Close()
+
+	// Attempt to write to that directory, expect a permissions error to occur
+	cfg := config.Config{
+		FileOutput: config.FileOutputConfig{
+			FilePath: path.Join(testDir, "out.log"),
+		},
+	}
+	log, err := logger.NewContextAwareLogger(cfg)
+	if err != nil {
+		t.Fatalf("Unable to create logger: %v", err)
+	}
+
+	var lastStats handlers.LogStats
+	log.SetErrorCallback(func(stats handlers.LogStats) {
+		lastStats = stats
+	})
+
+	log.Info(context.Background(), "Test msg")
+
+	if lastStats.Errors == nil || len(lastStats.Errors) != 1 {
+		t.Fatalf("Expected 1 error to occur during logging, got %v", len(lastStats.Errors))
+	}
+
+	// Confirm that the correct handler failed
+	failedHandler := lastStats.Errors[0].Handler.HandlerType
+	if failedHandler != handlers.HandlerConsole {
+		t.Fatalf("Expected test failure in %v, got %v", handlers.HandlerConsole, failedHandler)
+	}
+}
