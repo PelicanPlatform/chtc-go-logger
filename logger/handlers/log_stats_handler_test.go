@@ -32,7 +32,7 @@ import (
 
 // TODO make these configurable?
 const (
-	SMALL_TEST_VOL    = "/mnt/small-test-vol"
+	SMALL_TEST_VOL    = "/dev/shm"
 	MAX_TEST_VOL_SIZE = 1024 * 1024 // Bail out if the small test volume is > 1MB
 )
 
@@ -89,7 +89,7 @@ func getTestDirSpace() (uint64, error) {
 	// Via stackoverflow, available blocks * blocksize
 	avail := stat.Bavail * uint64(stat.Bsize)
 	if avail > MAX_TEST_VOL_SIZE {
-		return 0, errors.New("Too much space available in small test volume! Use a smaller test volume")
+		return 0, errors.New("Too much space available in /dev/shm! Please set a smaller shm_size")
 	}
 	return avail, nil
 

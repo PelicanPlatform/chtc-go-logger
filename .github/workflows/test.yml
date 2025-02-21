@@ -12,6 +12,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    container:
+      image: golang:1.23
+      options: --shm-size=24kb --user 1000:1000 # Need to set a low shm size for 'out of storage' tests
 
     steps:
       # Checkout the code
