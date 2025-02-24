@@ -25,7 +25,10 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 
 	"github.com/chtc/chtc-go-logger/config"
 	handler "github.com/chtc/chtc-go-logger/logger/handlers"
@@ -33,7 +36,10 @@ import (
 )
 
 var (
-	log *slog.Logger // Global logger
+	log          *slog.Logger
+	globalCtx    context.Context
+	globalCancel context.CancelFunc
+	setupOnce    sync.Once // Ensure context is initialized once
 )
 
 // Define a custom type for context keys
@@ -45,15 +51,48 @@ const LogAttrsKey contextKey = "logAttrs"
 // LogInit initializes the global logger.
 // Accepts optional parameters: string (configFile) and *config.Config/config.Config (overrides).
 func LogInit(params ...interface{}) error {
+	var err error
+
+	// Ensure global context and cancel are initialized once
+	setupOnce.Do(func() {
+		globalCtx, globalCancel = context.WithCancel(context.Background())
+		setupShutdownHandler() // Setup signal handling for clean shutdown
+	})
+
 	// Parse the parameters
 	cfg, err := parseParams(params...)
 	if err != nil {
 		return err
 	}
 
-	// Create and assign the global logger
+	// Create the logger
 	log, err = createLogger(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Start Health Check if enabled
+	if cfg.HealthCheck.Enabled {
+		StartHealthCheckMonitor(globalCtx, cfg)
+	}
+
 	return err
+}
+
+func setupShutdownHandler() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		sig := <-signalChan
+		log.Info("Received shutdown signal", slog.String("signal", sig.String()))
+
+		if globalCancel != nil {
+			globalCancel() // This cancels all goroutines tied to globalCtx
+		}
+
+		log.Info("Health check cleanup complete. Exiting.")
+	}()
 }
 
 // NewLogger creates and returns a new logger.
