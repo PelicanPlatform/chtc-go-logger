@@ -1,0 +1,6 @@
+services:
+  tests:
+    shm_size: 24576
+    build:
+      context: .
+      dockerfile: tests.Dockerfile
