@@ -42,32 +42,34 @@ type LogStats struct {
 
 type LogStatsCallback func(stats LogStats)
 
-// Handler that wraps another slog handler, forwarding its output to syslog
-type LogStatsHandler struct {
+// Wrapper for the slog.Handler interface that also
+type LogStatHandler interface {
+	slog.Handler
+	GetLatestStats() LogStats
+	SetStatsCallbackHandler(LogStatsCallback)
+}
+
+// Handler that wraps another set of slog handlers, and implements LogStatHandler
+type logDispatchStatHandler struct {
 	handlers      []NamedHandler
 	logConfig     config.Config
 	latestStats   LogStats
 	statsCallback LogStatsCallback
 }
 
-type LogStatGetter interface {
-	GetLatestStats() LogStats
-	SetStatsCallbackHandler(LogStatsCallback)
-}
-
-func (s *LogStatsHandler) GetLatestStats() LogStats {
+func (s *logDispatchStatHandler) GetLatestStats() LogStats {
 	return s.latestStats
 }
 
-func (s *LogStatsHandler) SetStatsCallbackHandler(callback LogStatsCallback) {
+func (s *logDispatchStatHandler) SetStatsCallbackHandler(callback LogStatsCallback) {
 	s.statsCallback = callback
 }
 
 // NewLogStatsHandler constructs a new metrics-collecting log handler
 // LogStatsHandler wraps the handler given in the constructor, collecting
 // info such as log message duration and disk usage with each log message
-func NewLogStatsHandler(logConfig config.Config, handlers []NamedHandler) slog.Handler {
-	handler := LogStatsHandler{
+func NewLogStatsHandler(logConfig config.Config, handlers []NamedHandler) LogStatHandler {
+	handler := logDispatchStatHandler{
 		handlers:  handlers,
 		logConfig: logConfig,
 	}
@@ -75,7 +77,7 @@ func NewLogStatsHandler(logConfig config.Config, handlers []NamedHandler) slog.H
 	return &handler
 }
 
-func (s *LogStatsHandler) Enabled(ctx context.Context, level slog.Level) bool {
+func (s *logDispatchStatHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	for _, handler := range s.handlers {
 		if handler.Enabled(ctx, level) {
 			return true
@@ -84,7 +86,7 @@ func (s *LogStatsHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return false
 }
 
-func (s *LogStatsHandler) statLogFS() (uint64, error) {
+func (s *logDispatchStatHandler) statLogFS() (uint64, error) {
 	fs := path.Dir(s.logConfig.FileOutput.FilePath)
 
 	stat := unix.Statfs_t{}
@@ -99,7 +101,7 @@ func (s *LogStatsHandler) statLogFS() (uint64, error) {
 
 // Required by slog.Handler interface: Processes a log via the writing handler, then
 // forward to syslog
-func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
+func (s *logDispatchStatHandler) Handle(ctx context.Context, r slog.Record) error {
 	stats := LogStats{}
 	start := time.Now()
 
@@ -154,7 +156,7 @@ func (s *LogStatsHandler) Handle(ctx context.Context, r slog.Record) error {
 }
 
 // Required by slog.Handler interface: Groups attributes under a namespace for the writing handler
-func (s *LogStatsHandler) WithGroup(name string) slog.Handler {
+func (s *logDispatchStatHandler) WithGroup(name string) slog.Handler {
 	newHandlers := make([]NamedHandler, len(s.handlers))
 	for i, handler := range s.handlers {
 		newHandlers[i] = NamedHandler{
@@ -162,7 +164,7 @@ func (s *LogStatsHandler) WithGroup(name string) slog.Handler {
 			handler.HandlerType,
 		}
 	}
-	return &LogStatsHandler{
+	return &logDispatchStatHandler{
 		handlers:      newHandlers,
 		statsCallback: s.statsCallback,
 		logConfig:     s.logConfig,
@@ -170,7 +172,7 @@ func (s *LogStatsHandler) WithGroup(name string) slog.Handler {
 }
 
 // Required by slog.Handler interface: Adds attributes to the writing handler
-func (s *LogStatsHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+func (s *logDispatchStatHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	newHandlers := make([]NamedHandler, len(s.handlers))
 	for i, handler := range s.handlers {
 		newHandlers[i] = NamedHandler{
@@ -178,7 +180,7 @@ func (s *LogStatsHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 			handler.HandlerType,
 		}
 	}
-	return &LogStatsHandler{
+	return &logDispatchStatHandler{
 		handlers:      newHandlers,
 		statsCallback: s.statsCallback,
 		logConfig:     s.logConfig,

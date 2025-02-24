@@ -211,7 +211,7 @@ func GetLogger() *slog.Logger {
 // ContextAwareLogger wraps slog.Logger to support context-based logging
 type ContextAwareLogger struct {
 	logger      *slog.Logger
-	statHandler handler.LogStatGetter
+	statHandler handler.LogStatHandler
 }
 
 // GetContextLogger returns the global context logger. If `LogInit` is not called, it initializes the logger with default settings.
@@ -222,7 +222,7 @@ func GetContextLogger() *ContextAwareLogger {
 			panic("Failed to initialize default logger: " + err.Error())
 		}
 	}
-	return &ContextAwareLogger{logger: log, statHandler: log.Handler().(handler.LogStatGetter)}
+	return &ContextAwareLogger{logger: log, statHandler: log.Handler().(handler.LogStatHandler)}
 }
 
 // NewContextAwareLogger creates a logger with context support by internally calling NewLogger
@@ -231,7 +231,7 @@ func NewContextAwareLogger(params ...interface{}) (*ContextAwareLogger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ContextAwareLogger{logger: newLogger, statHandler: newLogger.Handler().(handler.LogStatGetter)}, err
+	return &ContextAwareLogger{logger: newLogger, statHandler: newLogger.Handler().(handler.LogStatHandler)}, err
 }
 
 // SetErrorCallback

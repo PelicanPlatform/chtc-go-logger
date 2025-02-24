@@ -14,14 +14,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// lastHealthCheckStatus stores the last known health check timestamp and any query errors
-type lastHealthCheckStatus struct {
+// HealthCheckStatus stores the last known health check timestamp and any query errors
+type HealthCheckStatus struct {
 	Timestamp time.Time
 	Err       error
 }
 
 // Atomic pointer to store the last health check status
-var lastHealthCheck atomic.Pointer[lastHealthCheckStatus]
+var lastHealthCheck atomic.Pointer[HealthCheckStatus]
 
 // Global Elasticsearch client (initialized once)
 var esClient *elasticsearch.Client
@@ -29,12 +29,17 @@ var esClient *elasticsearch.Client
 // UUID for the service instance
 var instanceUUID = uuid.New().String()
 
+// LatestHealthCheck allows public read access to the latest health check result
+func LatestHealthCheck() HealthCheckStatus {
+	return *lastHealthCheck.Load()
+}
+
 // StartHealthCheckMonitor starts the health check monitoring
 func StartHealthCheckMonitor(ctx context.Context, cfg *config.Config) {
 	log := GetLogger()
 
 	// Initialize atomic pointer with a default value
-	lastHealthCheck.Store(&lastHealthCheckStatus{
+	lastHealthCheck.Store(&HealthCheckStatus{
 		Timestamp: time.Now().UTC(), // Current UTC timestamp
 		Err:       nil,
 	})
@@ -109,7 +114,7 @@ func queryElasticsearch(ctx context.Context, cfg *config.Config, log *slog.Logge
 			return
 		case <-ticker.C:
 			timestamp, err := fetchLastLogTimestamp(ctx, cfg, log)
-			newStatus := &lastHealthCheckStatus{Timestamp: timestamp, Err: err}
+			newStatus := &HealthCheckStatus{Timestamp: timestamp, Err: err}
 
 			lastHealthCheck.Store(newStatus)
 
