@@ -29,25 +29,42 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// LogError is a data structure for an error that occured
+// within one of the logger's sub-handlers
 type LogError struct {
-	Err     error
-	Record  slog.Record
+	// Error that occurred while logging
+	Err error
+	// Log record that caused the error
+	Record slog.Record
+	// Sub-handler in which the error occured
 	Handler handlers.NamedHandler
 }
 
+// LogStats is a data structure that reports resource usage
+// and errors that may have occured after each log message
 type LogStats struct {
-	Duration    time.Duration
-	DiskAvail   uint64
-	Errors      []LogError
+	// The time that the log message took to produce
+	Duration time.Duration
+	// If file-based output is available, the remaining storage space
+	// on the file output's storage device
+	DiskAvail uint64
+	// An array of errors that occured in each of the logger's
+	// sub-handlers
+	Errors []LogError
+	// The most recent remote health-check result for this logger
 	HealthCheck HealthCheckStatus
 }
 
+// LogStatsCallback is a function type for a callback that accepts a LogStats
 type LogStatsCallback func(stats LogStats)
 
-// Wrapper for the slog.Handler interface that also
+// Wrapper for the slog.Handler interface that also provides data access
+// to the LogStats that are collected during logging
 type LogStatHandler interface {
 	slog.Handler
+	// Get the latest LogStats produced by the logger
 	GetLatestStats() LogStats
+	// Set a callback function that will be called whenever a new LogStats is produced
 	SetStatsCallbackHandler(LogStatsCallback)
 }
 
@@ -79,6 +96,7 @@ func NewLogStatsHandler(logConfig config.Config, handlers []handlers.NamedHandle
 	return &handler
 }
 
+// slog.Handler implementation
 func (s *logDispatchStatHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	for _, handler := range s.handlers {
 		if handler.Enabled(ctx, level) {
@@ -101,8 +119,9 @@ func (s *logDispatchStatHandler) statLogFS() (uint64, error) {
 	return stat.Bavail * uint64(stat.Bsize), nil
 }
 
-// Required by slog.Handler interface: Processes a log via the writing handler, then
-// forward to syslog
+// Required by slog.Handler interface: Processes a log via each sub-handler,
+// collecting all the errors that occured during logging and exporting externally
+// via the logger's set LogStatsCallback
 func (s *logDispatchStatHandler) Handle(ctx context.Context, r slog.Record) error {
 	stats := LogStats{}
 	start := time.Now()

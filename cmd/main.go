@@ -139,13 +139,11 @@ func runBurstMode() {
 		slog.String("elapsedTime", "34ms"),
 		slog.String("result", "ok"),
 	)
-
 	contextLogger.Warn(ctx, "Potential issue detected",
 		slog.String("code", "123"),
 		slog.String("severity", "high"),
 		slog.String("retryable", "false"),
 	)
-
 	contextLogger.Error(ctx, "Operation failed",
 		slog.String("error", "timeout"),
 		slog.String("endpoint", "/api/v1/data"),
@@ -168,6 +166,6 @@ func init() {
 	}
 
 	// Initialize the global logger and suppress error
-	_ = logger.LogInit(overrideConfig)
+	_ = logger.LogInit(&overrideConfig)
 	LoadConfig()
 }
