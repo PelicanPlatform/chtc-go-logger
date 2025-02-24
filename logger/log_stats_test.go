@@ -20,9 +20,11 @@ package logger
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/chtc/chtc-go-logger/config"
 	"github.com/chtc/chtc-go-logger/logger/handlers"
@@ -170,7 +172,7 @@ func TestFileOutputLowSpaceWarning(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to stat small test volume: %v", err)
 	}
-	// Fill the entire test volume
+	// Fill the entire test volume, minus some amount of space
 	dataPath, err := fillTestDirSpace("data", int(avail)-OpenSpace)
 	if err != nil {
 		t.Fatalf("Unable to fill space on small test volume: %v", err)
@@ -229,10 +231,13 @@ func TestCloseStdoutTextLogError(t *testing.T) {
 	os.Stdout = f
 	f.Close()
 
-	// Attempt to write to that directory, expect a permissions error to occur
+	// Attempt to write to stdout, expect a "file closed" error
 	cfg := config.Config{
 		FileOutput: config.FileOutputConfig{
 			FilePath: path.Join(testDir, "out.log"),
+		},
+		ConsoleOutput: config.ConsoleOutputConfig{
+			Enabled: true,
 		},
 	}
 	log, err := NewContextAwareLogger(cfg)
@@ -255,5 +260,102 @@ func TestCloseStdoutTextLogError(t *testing.T) {
 	failedHandler := lastStats.Errors[0].Handler.HandlerType
 	if failedHandler != handlers.HandlerConsole {
 		t.Fatalf("Expected test failure in %v, got %v", handlers.HandlerConsole, failedHandler)
+	}
+}
+
+// Test that each reported log stat contins the most recently set
+// value of the log destination health check
+func TestLogStatsContainHealthCheck(t *testing.T) {
+	testDir := t.TempDir()
+	cfg := config.Config{
+		FileOutput: config.FileOutputConfig{
+			FilePath: path.Join(testDir, "out.log"),
+			Enabled:  true,
+		},
+		HealthCheck: config.HealthCheckConfig{
+			Enabled: true,
+		},
+	}
+	log, err := NewContextAwareLogger(cfg)
+
+	if err != nil {
+		t.Fatalf("Unable to create logger: %v", err)
+	}
+
+	var lastStats LogStats
+	log.SetErrorCallback(func(stats LogStats) {
+		lastStats = stats
+	})
+
+	// Set a test health check value to retrieve
+	sampleHealthCheck := HealthCheckStatus{
+		Timestamp: time.Now(),
+		Err:       errors.New("Sample Health Check Error"),
+	}
+	lastHealthCheck.Store(&sampleHealthCheck)
+
+	log.Info(context.Background(), "Test msg")
+
+	if len(lastStats.Errors) != 0 {
+		t.Fatalf("Expected 0 errors to occur during logging, got %v", len(lastStats.Errors))
+	}
+
+	// Confirm that the set value for the last health check is returned
+	healthCheck := lastStats.HealthCheck
+
+	if healthCheck.Timestamp != sampleHealthCheck.Timestamp {
+		t.Fatalf("Expected health check with timestamp %v, got %v", sampleHealthCheck.Timestamp, healthCheck.Timestamp)
+	}
+	if !errors.Is(healthCheck.Err, sampleHealthCheck.Err) {
+		t.Fatalf("Expected health check to have error %v, got %v", sampleHealthCheck.Err, healthCheck.Err)
+	}
+}
+
+// Dummy struct that waits an expected duration on write, used to
+type testDelayWriter struct {
+	delay time.Duration
+}
+
+func (t *testDelayWriter) Write(p []byte) (int, error) {
+	time.Sleep(t.delay)
+	return len(p), nil
+}
+
+// Test that each reported log stat contins the amount of time
+// that that log message was expected to produce
+func TestLogStatsElapsed(t *testing.T) {
+	// Create a test directory, then set it to read-only
+	testDir := t.TempDir()
+	// Attempt to write to that directory, expect a permissions error to occur
+	cfg := config.Config{
+		FileOutput: config.FileOutputConfig{
+			FilePath: path.Join(testDir, "out.log"),
+			Enabled:  true,
+		},
+	}
+	// Create a log handler that uses the "wait" output stream
+	expectedDelay := 10 * time.Millisecond
+	delayHandler := slog.NewJSONHandler(&testDelayWriter{delay: expectedDelay}, nil)
+	statsHandler := NewLogStatsHandler(cfg, []handlers.NamedHandler{{
+		Handler:     delayHandler,
+		HandlerType: handlers.HandlerFile,
+	}})
+	log := slog.New(statsHandler)
+
+	var lastStats LogStats
+	statsHandler.SetStatsCallbackHandler(func(stats LogStats) {
+		lastStats = stats
+	})
+
+	log.InfoContext(context.Background(), "Test msg")
+
+	delay := lastStats.Duration
+
+	if delay < expectedDelay {
+		t.Fatalf("Expected log duration of at least %v, got %v", expectedDelay, delay)
+	}
+
+	if delay > 2*expectedDelay {
+		t.Fatalf("Expected log duration of less than %v, got %v", 2*expectedDelay, delay)
 	}
 }

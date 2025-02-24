@@ -29,11 +29,6 @@ var esClient *elasticsearch.Client
 // UUID for the service instance
 var instanceUUID = uuid.New().String()
 
-// LatestHealthCheck allows public read access to the latest health check result
-func LatestHealthCheck() HealthCheckStatus {
-	return *lastHealthCheck.Load()
-}
-
 // StartHealthCheckMonitor starts the health check monitoring
 func StartHealthCheckMonitor(ctx context.Context, cfg *config.Config) {
 	log := GetLogger()

@@ -36,9 +36,10 @@ type LogError struct {
 }
 
 type LogStats struct {
-	Duration  time.Duration
-	DiskAvail uint64
-	Errors    []LogError
+	Duration    time.Duration
+	DiskAvail   uint64
+	Errors      []LogError
+	HealthCheck HealthCheckStatus
 }
 
 type LogStatsCallback func(stats LogStats)
@@ -134,9 +135,12 @@ func (s *logDispatchStatHandler) Handle(ctx context.Context, r slog.Record) erro
 
 	// Measure duration of logging + log metadata acquisition
 	elapsed := time.Since(start)
-	stats.Duration = elapsed
 
+	stats.Duration = elapsed
 	stats.Errors = errs
+	if heathCheck := lastHealthCheck.Load(); heathCheck != nil {
+		stats.HealthCheck = *heathCheck
+	}
 
 	s.latestStats = stats
 
@@ -161,8 +165,8 @@ func (s *logDispatchStatHandler) WithGroup(name string) slog.Handler {
 	newHandlers := make([]handlers.NamedHandler, len(s.handlers))
 	for i, handler := range s.handlers {
 		newHandlers[i] = handlers.NamedHandler{
-			handler.WithGroup(name),
-			handler.HandlerType,
+			Handler:     handler.WithGroup(name),
+			HandlerType: handler.HandlerType,
 		}
 	}
 	return &logDispatchStatHandler{
@@ -177,8 +181,8 @@ func (s *logDispatchStatHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	newHandlers := make([]handlers.NamedHandler, len(s.handlers))
 	for i, handler := range s.handlers {
 		newHandlers[i] = handlers.NamedHandler{
-			handler.WithAttrs(attrs),
-			handler.HandlerType,
+			Handler:     handler.WithAttrs(attrs),
+			HandlerType: handler.HandlerType,
 		}
 	}
 	return &logDispatchStatHandler{
