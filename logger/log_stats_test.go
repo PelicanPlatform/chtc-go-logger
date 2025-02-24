@@ -15,7 +15,7 @@
  * limitations under the License.
  *
  ***************************************************************/
-package handlers_test
+package logger
 
 import (
 	"context"
@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/chtc/chtc-go-logger/config"
-	"github.com/chtc/chtc-go-logger/logger"
 	"github.com/chtc/chtc-go-logger/logger/handlers"
 	"golang.org/x/sys/unix"
 )
@@ -54,13 +53,13 @@ func TestFileOutputPermissionDeniedError(t *testing.T) {
 			Enabled:  true,
 		},
 	}
-	log, err := logger.NewContextAwareLogger(cfg)
+	log, err := NewContextAwareLogger(cfg)
 	if err != nil {
 		t.Fatalf("Unable to create logger: %v", err)
 	}
 
-	var lastStats handlers.LogStats
-	log.SetErrorCallback(func(stats handlers.LogStats) {
+	var lastStats LogStats
+	log.SetErrorCallback(func(stats LogStats) {
 		lastStats = stats
 	})
 
@@ -138,13 +137,13 @@ func TestFileOutputZeroSpaceError(t *testing.T) {
 			Enabled:  true,
 		},
 	}
-	log, err := logger.NewContextAwareLogger(cfg)
+	log, err := NewContextAwareLogger(cfg)
 	if err != nil {
 		t.Fatalf("Unable to create logger: %v", err)
 	}
 
-	var lastStats handlers.LogStats
-	log.SetErrorCallback(func(stats handlers.LogStats) {
+	var lastStats LogStats
+	log.SetErrorCallback(func(stats LogStats) {
 		lastStats = stats
 	})
 
@@ -188,13 +187,13 @@ func TestFileOutputLowSpaceWarning(t *testing.T) {
 			Enabled:  true,
 		},
 	}
-	log, err := logger.NewContextAwareLogger(cfg)
+	log, err := NewContextAwareLogger(cfg)
 	if err != nil {
 		t.Fatalf("Unable to create logger: %v", err)
 	}
 
-	var lastStats handlers.LogStats
-	log.SetErrorCallback(func(stats handlers.LogStats) {
+	var lastStats LogStats
+	log.SetErrorCallback(func(stats LogStats) {
 		lastStats = stats
 	})
 
@@ -236,13 +235,13 @@ func TestCloseStdoutTextLogError(t *testing.T) {
 			FilePath: path.Join(testDir, "out.log"),
 		},
 	}
-	log, err := logger.NewContextAwareLogger(cfg)
+	log, err := NewContextAwareLogger(cfg)
 	if err != nil {
 		t.Fatalf("Unable to create logger: %v", err)
 	}
 
-	var lastStats handlers.LogStats
-	log.SetErrorCallback(func(stats handlers.LogStats) {
+	var lastStats LogStats
+	log.SetErrorCallback(func(stats LogStats) {
 		lastStats = stats
 	})
 

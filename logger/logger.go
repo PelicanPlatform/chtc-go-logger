@@ -192,7 +192,7 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 		handlers = append(handlers, handler.NamedHandler{Handler: slog.NewTextHandler(os.Stdout, nil), HandlerType: handler.HandlerSyslog})
 	}
 
-	return slog.New(handler.NewLogStatsHandler(*cfg, handlers)), nil
+	return slog.New(NewLogStatsHandler(*cfg, handlers)), nil
 }
 
 // GetLogger returns the global logger. If `LogInit` is not called, it initializes the logger with default settings.
@@ -211,7 +211,7 @@ func GetLogger() *slog.Logger {
 // ContextAwareLogger wraps slog.Logger to support context-based logging
 type ContextAwareLogger struct {
 	logger      *slog.Logger
-	statHandler handler.LogStatHandler
+	statHandler LogStatHandler
 }
 
 // GetContextLogger returns the global context logger. If `LogInit` is not called, it initializes the logger with default settings.
@@ -222,7 +222,7 @@ func GetContextLogger() *ContextAwareLogger {
 			panic("Failed to initialize default logger: " + err.Error())
 		}
 	}
-	return &ContextAwareLogger{logger: log, statHandler: log.Handler().(handler.LogStatHandler)}
+	return &ContextAwareLogger{logger: log, statHandler: log.Handler().(LogStatHandler)}
 }
 
 // NewContextAwareLogger creates a logger with context support by internally calling NewLogger
@@ -231,11 +231,11 @@ func NewContextAwareLogger(params ...interface{}) (*ContextAwareLogger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ContextAwareLogger{logger: newLogger, statHandler: newLogger.Handler().(handler.LogStatHandler)}, err
+	return &ContextAwareLogger{logger: newLogger, statHandler: newLogger.Handler().(LogStatHandler)}, err
 }
 
 // SetErrorCallback
-func (l *ContextAwareLogger) SetErrorCallback(callback handler.LogStatsCallback) {
+func (l *ContextAwareLogger) SetErrorCallback(callback LogStatsCallback) {
 	l.statHandler.SetStatsCallbackHandler(callback)
 }
 

@@ -15,7 +15,7 @@
  * limitations under the License.
  *
  ***************************************************************/
-package handlers
+package logger
 
 import (
 	"context"
@@ -25,13 +25,14 @@ import (
 	"time"
 
 	"github.com/chtc/chtc-go-logger/config"
+	"github.com/chtc/chtc-go-logger/logger/handlers"
 	"golang.org/x/sys/unix"
 )
 
 type LogError struct {
 	Err     error
 	Record  slog.Record
-	Handler NamedHandler
+	Handler handlers.NamedHandler
 }
 
 type LogStats struct {
@@ -51,7 +52,7 @@ type LogStatHandler interface {
 
 // Handler that wraps another set of slog handlers, and implements LogStatHandler
 type logDispatchStatHandler struct {
-	handlers      []NamedHandler
+	handlers      []handlers.NamedHandler
 	logConfig     config.Config
 	latestStats   LogStats
 	statsCallback LogStatsCallback
@@ -68,7 +69,7 @@ func (s *logDispatchStatHandler) SetStatsCallbackHandler(callback LogStatsCallba
 // NewLogStatsHandler constructs a new metrics-collecting log handler
 // LogStatsHandler wraps the handler given in the constructor, collecting
 // info such as log message duration and disk usage with each log message
-func NewLogStatsHandler(logConfig config.Config, handlers []NamedHandler) LogStatHandler {
+func NewLogStatsHandler(logConfig config.Config, handlers []handlers.NamedHandler) LogStatHandler {
 	handler := logDispatchStatHandler{
 		handlers:  handlers,
 		logConfig: logConfig,
@@ -157,9 +158,9 @@ func (s *logDispatchStatHandler) Handle(ctx context.Context, r slog.Record) erro
 
 // Required by slog.Handler interface: Groups attributes under a namespace for the writing handler
 func (s *logDispatchStatHandler) WithGroup(name string) slog.Handler {
-	newHandlers := make([]NamedHandler, len(s.handlers))
+	newHandlers := make([]handlers.NamedHandler, len(s.handlers))
 	for i, handler := range s.handlers {
-		newHandlers[i] = NamedHandler{
+		newHandlers[i] = handlers.NamedHandler{
 			handler.WithGroup(name),
 			handler.HandlerType,
 		}
@@ -173,9 +174,9 @@ func (s *logDispatchStatHandler) WithGroup(name string) slog.Handler {
 
 // Required by slog.Handler interface: Adds attributes to the writing handler
 func (s *logDispatchStatHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	newHandlers := make([]NamedHandler, len(s.handlers))
+	newHandlers := make([]handlers.NamedHandler, len(s.handlers))
 	for i, handler := range s.handlers {
-		newHandlers[i] = NamedHandler{
+		newHandlers[i] = handlers.NamedHandler{
 			handler.WithAttrs(attrs),
 			handler.HandlerType,
 		}
