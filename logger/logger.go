@@ -137,7 +137,7 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 
 	// Console handler
 	if cfg.ConsoleOutput.Enabled {
-		handler := handler.NamedHandler{HandlerType: handler.HandlerConsole}
+		handler := handler.NamedHandler{HandlerType: cfg.ConsoleOutput.Label}
 		if cfg.ConsoleOutput.JSONOutput {
 			handler.Handler = slog.NewJSONHandler(os.Stdout, nil)
 		} else if cfg.ConsoleOutput.Colors {
@@ -161,7 +161,7 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 				MaxAge:     cfg.FileOutput.MaxAgeDays,
 				Compress:   true,
 			}, nil),
-			HandlerType: handler.HandlerFile,
+			HandlerType: cfg.FileOutput.Label,
 		})
 	}
 
@@ -184,12 +184,12 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 			return nil, err
 		}
 
-		handlers = append(handlers, handler.NamedHandler{Handler: syslogHandler, HandlerType: handler.HandlerSyslog})
+		handlers = append(handlers, handler.NamedHandler{Handler: syslogHandler, HandlerType: cfg.SyslogOutput.Label})
 	}
 
 	// Fallback to a basic console logger if no handlers are configured
 	if len(handlers) == 0 {
-		handlers = append(handlers, handler.NamedHandler{Handler: slog.NewTextHandler(os.Stdout, nil), HandlerType: handler.HandlerSyslog})
+		handlers = append(handlers, handler.NamedHandler{Handler: slog.NewTextHandler(os.Stdout, nil), HandlerType: cfg.ConsoleOutput.Label})
 	}
 
 	return slog.New(NewLogStatsHandler(*cfg, handlers)), nil

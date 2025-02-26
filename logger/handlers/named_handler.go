@@ -20,18 +20,16 @@ package handlers
 
 import "log/slog"
 
-// "Enum" of known log output streams
-type HandlerType string
-
+// The default labels for each handler
 const (
-	HandlerConsole HandlerType = "HandlerConsole"
-	HandlerFile    HandlerType = "HandlerFile"
-	HandlerSyslog  HandlerType = "HandlerSyslog"
+	HandlerConsole string = "console_output"
+	HandlerFile           = "file_output"
+	HandlerSyslog         = "syslog_output"
 )
 
 // Wraper struct for a slog.Handler and a string label describing the handler
 // Used to determine which output stream an error occured in
 type NamedHandler struct {
 	slog.Handler
-	HandlerType
+	HandlerType string
 }
