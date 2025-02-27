@@ -17,12 +17,14 @@ import (
 var defaultYAML []byte
 
 type ConsoleOutputConfig struct {
-	Enabled    bool `mapstructure:"enabled"`     // Enable or disable console output
-	JSONOutput bool `mapstructure:"json_object"` // If true, output JSON objects; disables colors
-	Colors     bool `mapstructure:"colors"`      // Enable color-coded logs (ignored if JSONOutput is true)
+	Label      string `mapstructure:"label"`       // Label for the handler when reporting logging stats
+	Enabled    bool   `mapstructure:"enabled"`     // Enable or disable console output
+	JSONOutput bool   `mapstructure:"json_object"` // If true, output JSON objects; disables colors
+	Colors     bool   `mapstructure:"colors"`      // Enable color-coded logs (ignored if JSONOutput is true)
 }
 
 type FileOutputConfig struct {
+	Label       string `mapstructure:"label"`         // Label for the handler when reporting logging stats
 	Enabled     bool   `mapstructure:"enabled"`       // Enable or disable file output
 	FilePath    string `mapstructure:"file_path"`     // Path to the log file
 	MaxFileSize int    `mapstructure:"max_file_size"` // Max file size in MB
@@ -30,6 +32,7 @@ type FileOutputConfig struct {
 	MaxAgeDays  int    `mapstructure:"max_age_days"`  // Maximum age of log files in days
 }
 type SyslogOutputConfig struct {
+	Label      string `mapstructure:"label"`       // Label for the handler when reporting logging stats
 	Enabled    bool   `mapstructure:"enabled"`     // Enable or disable syslog output
 	Network    string `mapstructure:"network"`     // Network over which to connect to syslog, default empty for local daemon
 	Addr       string `mapstructure:"addr"`        // Address of remote syslog server, if any

@@ -19,11 +19,13 @@
 log_level: INFO # Log level (e.g., DEBUG, INFO, WARN, ERROR)
 
 console_output: # Console output settings
+  label: console_output # Label for the handler when reporting logging stats
   enabled: true # Enable or disable console output
   json_object: false # If true, output JSON objects; disables colors
   colors: true # Enable color-coded logs (ignored if json_object is true)
 
 file_output: # File output settings
+  label: file_output # Label for the handler when reporting logging stats
   enabled: true # Enable or disable file output
   file_path: /var/log/chtc/app.log # Path to the log file
   max_file_size: 100 # Max file size in MB
@@ -31,6 +33,7 @@ file_output: # File output settings
   max_age_days: 30 # Maximum age of logs in days
 
 syslog_output: # Syslog output settings
+  label: syslog_output # Label for the handler when reporting logging stats
   enabled: false # Enable or disable syslog output (false by default)
   network: "" # Network over which to send syslog messages (default local)
   addr: "" # Remote server address to send syslog messages to (default local)
