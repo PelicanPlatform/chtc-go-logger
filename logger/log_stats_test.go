@@ -35,6 +35,10 @@ import (
 const (
 	SMALL_TEST_VOL    = "/dev/shm"
 	MAX_TEST_VOL_SIZE = 1024 * 1024 // Bail out if the small test volume is > 1MB
+	// The default labels for each handler
+	HandlerConsole string = "console_output"
+	HandlerFile           = "file_output"
+	HandlerSyslog         = "syslog_output"
 )
 
 // Crete a log directory to which we don't have write access,
@@ -73,8 +77,8 @@ func TestFileOutputPermissionDeniedError(t *testing.T) {
 
 	// Confirm that the correct handler failed
 	failedHandler := lastStats.Errors[0].Handler.HandlerType
-	if failedHandler != handlers.HandlerFile {
-		t.Fatalf("Expected test failure in %v, got %v", handlers.HandlerFile, failedHandler)
+	if failedHandler != HandlerFile {
+		t.Fatalf("Expected test failure in %v, got %v", HandlerFile, failedHandler)
 	}
 }
 
@@ -157,8 +161,8 @@ func TestFileOutputZeroSpaceError(t *testing.T) {
 
 	// Confirm that the correct handler failed
 	failedHandler := lastStats.Errors[0].Handler.HandlerType
-	if failedHandler != handlers.HandlerFile {
-		t.Fatalf("Expected test failure in %v, got %v", handlers.HandlerFile, failedHandler)
+	if failedHandler != HandlerFile {
+		t.Fatalf("Expected test failure in %v, got %v", HandlerFile, failedHandler)
 	}
 }
 
@@ -258,8 +262,8 @@ func TestCloseStdoutTextLogError(t *testing.T) {
 
 	// Confirm that the correct handler failed
 	failedHandler := lastStats.Errors[0].Handler.HandlerType
-	if failedHandler != handlers.HandlerConsole {
-		t.Fatalf("Expected test failure in %v, got %v", handlers.HandlerConsole, failedHandler)
+	if failedHandler != HandlerConsole {
+		t.Fatalf("Expected test failure in %v, got %v", HandlerConsole, failedHandler)
 	}
 }
 
@@ -338,7 +342,7 @@ func TestLogStatsElapsed(t *testing.T) {
 	delayHandler := slog.NewJSONHandler(&testDelayWriter{delay: expectedDelay}, nil)
 	statsHandler := NewLogStatsHandler(cfg, []handlers.NamedHandler{{
 		Handler:     delayHandler,
-		HandlerType: handlers.HandlerFile,
+		HandlerType: HandlerFile,
 	}})
 	log := slog.New(statsHandler)
 
