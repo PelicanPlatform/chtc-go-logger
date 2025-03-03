@@ -45,3 +45,8 @@ health_check: # Health check settings
   elasticsearch_periodicity: "30s" # Interval for querying Elasticsearch
   elasticsearch_index: "healthcheck_logs" # Index name for storing health check logs
   elasticsearch_url: "http://your-elasticsearch-host:9200" # Added Elasticsearch URL
+
+sequence_info: # Configure recording sequencing of log info
+  enabled: true # Enable including log sequence information
+  logger_id_key: logger_id # Key to record each logger object's unique ID under
+  sequence_key: sequence # Key to record each log message's unique sequence under

@@ -22,10 +22,12 @@ import (
 	"errors"
 	"log/slog"
 	"path"
+	"sync/atomic"
 	"time"
 
 	"github.com/chtc/chtc-go-logger/config"
 	"github.com/chtc/chtc-go-logger/logger/handlers"
+	"github.com/google/uuid"
 	"golang.org/x/sys/unix"
 )
 
@@ -74,6 +76,8 @@ type logDispatchStatHandler struct {
 	logConfig     config.Config
 	latestStats   LogStats
 	statsCallback LogStatsCallback
+	sequence      *atomic.Uint64
+	logId         string
 }
 
 func (s *logDispatchStatHandler) GetLatestStats() LogStats {
@@ -88,9 +92,12 @@ func (s *logDispatchStatHandler) SetStatsCallbackHandler(callback LogStatsCallba
 // LogStatsHandler wraps the handler given in the constructor, collecting
 // info such as log message duration and disk usage with each log message
 func NewLogStatsHandler(logConfig config.Config, handlers []handlers.NamedHandler) LogStatHandler {
+	var seq atomic.Uint64
 	handler := logDispatchStatHandler{
 		handlers:  handlers,
 		logConfig: logConfig,
+		logId:     uuid.NewString(),
+		sequence:  &seq,
 	}
 
 	return &handler
@@ -126,6 +133,11 @@ func (s *logDispatchStatHandler) Handle(ctx context.Context, r slog.Record) erro
 	stats := LogStats{}
 	start := time.Now()
 
+	// Set the sequence number on the log
+	if s.logConfig.SequenceInfo.Enabled {
+		r.Add(slog.String(s.logConfig.SequenceInfo.IdKey, s.logId))
+		r.Add(slog.Int64(s.logConfig.SequenceInfo.SequenceKey, int64(s.sequence.Add(1))))
+	}
 	// Call into the actual log handler, checking for errors on result
 	errs := make([]LogError, 0, len(s.handlers))
 	for _, handler := range s.handlers {
@@ -192,6 +204,9 @@ func (s *logDispatchStatHandler) WithGroup(name string) slog.Handler {
 		handlers:      newHandlers,
 		statsCallback: s.statsCallback,
 		logConfig:     s.logConfig,
+		// New logger shares same outputs with parent, so sequence # can be kept persistent
+		logId:    s.logId,
+		sequence: s.sequence,
 	}
 }
 
@@ -208,5 +223,8 @@ func (s *logDispatchStatHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		handlers:      newHandlers,
 		statsCallback: s.statsCallback,
 		logConfig:     s.logConfig,
+		// New logger shares same outputs with parent, so sequence # can be kept persistent
+		logId:    s.logId,
+		sequence: s.sequence,
 	}
 }
