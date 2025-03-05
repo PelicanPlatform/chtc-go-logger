@@ -135,8 +135,9 @@ func (s *logDispatchStatHandler) Handle(ctx context.Context, r slog.Record) erro
 
 	// Set the sequence number on the log
 	if s.logConfig.SequenceInfo.Enabled {
-		r.Add(slog.String(s.logConfig.SequenceInfo.IdKey, s.logId))
-		r.Add(slog.Int64(s.logConfig.SequenceInfo.SequenceKey, int64(s.sequence.Add(1))))
+		r.Add(slog.Group("sequence_info",
+			slog.String(s.logConfig.SequenceInfo.IdKey, s.logId),
+			slog.Int64(s.logConfig.SequenceInfo.SequenceKey, int64(s.sequence.Add(1)))))
 	}
 	// Call into the actual log handler, checking for errors on result
 	errs := make([]LogError, 0, len(s.handlers))

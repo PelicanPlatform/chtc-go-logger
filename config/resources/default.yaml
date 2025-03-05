@@ -49,4 +49,4 @@ health_check: # Health check settings
 sequence_info: # Configure recording sequencing of log info
   enabled: true # Enable including log sequence information
   logger_id_key: logger_id # Key to record each logger object's unique ID under
-  sequence_key: sequence # Key to record each log message's unique sequence under
+  sequence_key: sequence_no # Key to record each log message's unique sequence under

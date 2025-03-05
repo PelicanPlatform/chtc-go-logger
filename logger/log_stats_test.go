@@ -410,7 +410,7 @@ func TestLogSequencing(t *testing.T) {
 	file_str := string(file_contents)
 
 	for i := 1; i <= messageCount; i++ {
-		match, err := regexp.MatchString(fmt.Sprintf("\"sequence\":%v", i), file_str)
+		match, err := regexp.MatchString(fmt.Sprintf("\"sequence_no\":%v", i), file_str)
 		if err != nil || !match {
 			t.Fatalf("Sequence #%v not found in output!", i)
 		}
