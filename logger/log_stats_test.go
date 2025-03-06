@@ -20,9 +20,12 @@ package logger
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
+	"regexp"
+	"sync"
 	"testing"
 	"time"
 
@@ -362,4 +365,55 @@ func TestLogStatsElapsed(t *testing.T) {
 	if delay > 2*expectedDelay {
 		t.Fatalf("Expected log duration of less than %v, got %v", 2*expectedDelay, delay)
 	}
+}
+
+// Create a large number of logs in parallel, then
+// verify that every sequence number appears in the
+// resulting output
+func TestLogSequencing(t *testing.T) {
+	testDir := t.TempDir()
+
+	messageCount := 500
+
+	cfg := config.Config{
+		FileOutput: config.FileOutputConfig{
+			FilePath: path.Join(testDir, "out.log"),
+			Enabled:  true,
+		},
+		SequenceInfo: config.SequenceConfig{
+			Enabled: true,
+		},
+	}
+
+	log, err := NewContextAwareLogger(cfg)
+
+	if err != nil {
+		t.Fatalf("Unable to create logger: %v", err)
+	}
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < messageCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Info(context.Background(), "Test msg")
+		}()
+	}
+	wg.Wait()
+
+	// Confirm that every sequence number is included exactly once
+	file_contents, err := os.ReadFile(cfg.FileOutput.FilePath)
+	if err != nil {
+		t.Fatalf("Unable to read logger output: %v", err)
+	}
+	file_str := string(file_contents)
+
+	for i := 1; i <= messageCount; i++ {
+		match, err := regexp.MatchString(fmt.Sprintf("\"sequence_no\":%v", i), file_str)
+		if err != nil || !match {
+			t.Fatalf("Sequence #%v not found in output!", i)
+		}
+	}
+
 }

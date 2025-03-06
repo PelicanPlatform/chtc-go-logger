@@ -47,12 +47,18 @@ type HealthCheckConfig struct {
 	ElasticsearchURL         string        `mapstructure:"elasticsearch_url"`
 }
 
+type SequenceConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`       // Enable or disable sequence logging
+	IdKey       string `mapstructure:"logger_id_key"` // The key to log the logger's unique ID under
+	SequenceKey string `mapstructure:"sequence_key"`  // The key to log the logger's message sequence number under
+}
 type Config struct {
 	LogLevel      string              `mapstructure:"log_level"`      // Log level (e.g., DEBUG, INFO, WARN, ERROR)
 	ConsoleOutput ConsoleOutputConfig `mapstructure:"console_output"` // Console output settings
 	FileOutput    FileOutputConfig    `mapstructure:"file_output"`    // File output settings
 	SyslogOutput  SyslogOutputConfig  `mapstructure:"syslog_output"`  // Syslog output settings
 	HealthCheck   HealthCheckConfig   `mapstructure:"health_check"`   // Health Check Settings
+	SequenceInfo  SequenceConfig      `mapstructure:"sequence_info"`  // Include info about sequence of log message
 }
 
 // LoadConfig loads and merges the configuration in this order:
