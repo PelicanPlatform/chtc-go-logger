@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chtc/chtc-go-logger/config"
 	"github.com/chtc/chtc-go-logger/logger"
 )
 
@@ -151,7 +152,20 @@ func runBurstMode() {
 }
 
 func init() {
+	overrideConfig := config.Config{
+		FileOutput: config.FileOutputConfig{
+			FilePath: "/workspaces/logger_config_cleanup/chtc-logger.log",
+		},
+		HealthCheck: config.HealthCheckConfig{
+			Enabled:                  true,
+			LogPeriodicity:           10 * time.Second,
+			ElasticsearchPeriodicity: 10 * time.Second,
+			ElasticsearchIndex:       "my-app-logs",
+			ElasticsearchURL:         "http://host.docker.internal:9200",
+		},
+	}
+
 	// Initialize the global logger and suppress error
-	_ = logger.LogInit()
+	_ = logger.LogInit(overrideConfig)
 	LoadConfig()
 }

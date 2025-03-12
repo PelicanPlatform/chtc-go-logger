@@ -35,3 +35,10 @@ syslog_output: # Syslog output settings
   network: "" # Network over which to send syslog messages (default local)
   addr: "" # Remote server address to send syslog messages to (default local)
   json_object: true # If true, output JSON objects
+
+health_check: # Health check settings
+  enabled: false # Enable or disable health checks
+  log_periodicity: "10s" # Interval for logging health check events
+  elasticsearch_periodicity: "30s" # Interval for querying Elasticsearch
+  elasticsearch_index: "healthcheck_logs" # Index name for storing health check logs
+  elasticsearch_url: "http://your-elasticsearch-host:9200" # Added Elasticsearch URL
