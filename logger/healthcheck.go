@@ -1,3 +1,21 @@
+/***************************************************************
+ *
+ * Copyright (C) 2025, Pelican Project, Morgridge Institute for Research
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License.  You may
+ * obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ ***************************************************************/
+
 package logger
 
 import (
@@ -14,14 +32,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// lastHealthCheckStatus stores the last known health check timestamp and any query errors
-type lastHealthCheckStatus struct {
+// HealthCheckStatus stores the last known health check timestamp and any query errors
+type HealthCheckStatus struct {
 	Timestamp time.Time
 	Err       error
 }
 
 // Atomic pointer to store the last health check status
-var lastHealthCheck atomic.Pointer[lastHealthCheckStatus]
+var lastHealthCheck atomic.Pointer[HealthCheckStatus]
 
 // Global Elasticsearch client (initialized once)
 var esClient *elasticsearch.Client
@@ -34,7 +52,7 @@ func StartHealthCheckMonitor(ctx context.Context, cfg *config.Config) {
 	log := GetLogger()
 
 	// Initialize atomic pointer with a default value
-	lastHealthCheck.Store(&lastHealthCheckStatus{
+	lastHealthCheck.Store(&HealthCheckStatus{
 		Timestamp: time.Now().UTC(), // Current UTC timestamp
 		Err:       nil,
 	})
@@ -109,7 +127,7 @@ func queryElasticsearch(ctx context.Context, cfg *config.Config, log *slog.Logge
 			return
 		case <-ticker.C:
 			timestamp, err := fetchLastLogTimestamp(ctx, cfg, log)
-			newStatus := &lastHealthCheckStatus{Timestamp: timestamp, Err: err}
+			newStatus := &HealthCheckStatus{Timestamp: timestamp, Err: err}
 
 			lastHealthCheck.Store(newStatus)
 

@@ -151,6 +151,13 @@ func runBurstMode() {
 	)
 }
 
+func panicOnLowDisk(logStats logger.LogStats) {
+	if logStats.DiskAvail < uint64(GetConfig().Logging.MinDiskSpaceRequired) {
+		// kill the application before we exhaust the disk
+		panic("RUnning out of logging disk space! Exiting.")
+	}
+}
+
 func init() {
 	overrideConfig := config.Config{
 		FileOutput: config.FileOutputConfig{
@@ -166,6 +173,7 @@ func init() {
 	}
 
 	// Initialize the global logger and suppress error
-	_ = logger.LogInit(overrideConfig)
+	_ = logger.LogInit(&overrideConfig)
+	logger.GetContextLogger().SetErrorCallback(panicOnLowDisk)
 	LoadConfig()
 }
