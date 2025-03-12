@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/chtc/chtc-go-logger/config"
@@ -71,7 +72,7 @@ func runStreamMode() {
 	// Handle Ctrl+C for clean shutdown
 	go func() {
 		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, os.Interrupt, os.Kill) // Catch SIGINT (Ctrl+C) and SIGTERM
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM) // Catch SIGINT (Ctrl+C) and SIGTERM
 		<-sigChan
 		log.Info("Shutdown signal received, stopping clients and server...")
 		cancel() // Signal all goroutines to stop
@@ -150,13 +151,29 @@ func runBurstMode() {
 	)
 }
 
+func panicOnLowDisk(logStats logger.LogStats) {
+	if logStats.DiskAvail < uint64(GetConfig().Logging.MinDiskSpaceRequired) {
+		// kill the application before we exhaust the disk
+		panic("RUnning out of logging disk space! Exiting.")
+	}
+}
+
 func init() {
 	overrideConfig := config.Config{
 		FileOutput: config.FileOutputConfig{
 			FilePath: "/var/log/chtc-logger.log",
 		},
+		HealthCheck: config.HealthCheckConfig{
+			Enabled:                  true,
+			LogPeriodicity:           10 * time.Second,
+			ElasticsearchPeriodicity: 10 * time.Second,
+			ElasticsearchIndex:       "my-app-logs",
+			ElasticsearchURL:         "http://host.docker.internal:9200",
+		},
 	}
 
 	// Initialize the global logger and suppress error
 	_ = logger.LogInit(&overrideConfig)
+	logger.GetContextLogger().SetErrorCallback(panicOnLowDisk)
+	LoadConfig()
 }

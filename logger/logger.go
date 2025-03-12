@@ -25,7 +25,10 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 
 	"github.com/chtc/chtc-go-logger/config"
 	handler "github.com/chtc/chtc-go-logger/logger/handlers"
@@ -33,7 +36,10 @@ import (
 )
 
 var (
-	log *slog.Logger // Global logger
+	log          *slog.Logger
+	globalCtx    context.Context
+	globalCancel context.CancelFunc
+	setupOnce    sync.Once // Ensure context is initialized once
 )
 
 // Define a custom type for context keys
@@ -45,15 +51,48 @@ const LogAttrsKey contextKey = "logAttrs"
 // LogInit initializes the global logger.
 // Accepts optional parameters: string (configFile) and *config.Config/config.Config (overrides).
 func LogInit(params ...interface{}) error {
+	var err error
+
+	// Ensure global context and cancel are initialized once
+	setupOnce.Do(func() {
+		globalCtx, globalCancel = context.WithCancel(context.Background())
+		setupShutdownHandler() // Setup signal handling for clean shutdown
+	})
+
 	// Parse the parameters
 	cfg, err := parseParams(params...)
 	if err != nil {
 		return err
 	}
 
-	// Create and assign the global logger
+	// Create the logger
 	log, err = createLogger(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Start Health Check if enabled
+	if cfg.HealthCheck.Enabled {
+		StartHealthCheckMonitor(globalCtx, cfg)
+	}
+
 	return err
+}
+
+func setupShutdownHandler() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		sig := <-signalChan
+		log.Info("Received shutdown signal", slog.String("signal", sig.String()))
+
+		if globalCancel != nil {
+			globalCancel() // This cancels all goroutines tied to globalCtx
+		}
+
+		log.Info("Health check cleanup complete. Exiting.")
+	}()
 }
 
 // NewLogger creates and returns a new logger.
@@ -94,17 +133,19 @@ func parseParams(params ...interface{}) (*config.Config, error) {
 
 // createLogger creates a logger using the provided configuration.
 func createLogger(cfg *config.Config) (*slog.Logger, error) {
-	var handlers []slog.Handler
+	var handlers []handler.NamedHandler
 
 	// Console handler
 	if cfg.ConsoleOutput.Enabled {
+		handler := handler.NamedHandler{HandlerType: cfg.ConsoleOutput.Label}
 		if cfg.ConsoleOutput.JSONOutput {
-			handlers = append(handlers, slog.NewJSONHandler(os.Stdout, nil))
+			handler.Handler = slog.NewJSONHandler(os.Stdout, nil)
 		} else if cfg.ConsoleOutput.Colors {
-			handlers = append(handlers, &ColorConsoleHandler{output: os.Stdout})
+			handler.Handler = &ColorConsoleHandler{output: os.Stdout}
 		} else {
-			handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
+			handler.Handler = slog.NewTextHandler(os.Stdout, nil)
 		}
+		handlers = append(handlers, handler)
 	}
 
 	// File handler
@@ -112,13 +153,16 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 		if cfg.FileOutput.FilePath == "" {
 			panic("File output enabled but file path is empty")
 		}
-		handlers = append(handlers, slog.NewJSONHandler(&lumberjack.Logger{
-			Filename:   cfg.FileOutput.FilePath,
-			MaxSize:    cfg.FileOutput.MaxFileSize,
-			MaxBackups: cfg.FileOutput.MaxBackups,
-			MaxAge:     cfg.FileOutput.MaxAgeDays,
-			Compress:   true,
-		}, nil))
+		handlers = append(handlers, handler.NamedHandler{
+			Handler: slog.NewJSONHandler(&lumberjack.Logger{
+				Filename:   cfg.FileOutput.FilePath,
+				MaxSize:    cfg.FileOutput.MaxFileSize,
+				MaxBackups: cfg.FileOutput.MaxBackups,
+				MaxAge:     cfg.FileOutput.MaxAgeDays,
+				Compress:   true,
+			}, nil),
+			HandlerType: cfg.FileOutput.Label,
+		})
 	}
 
 	// Syslog handler
@@ -140,15 +184,15 @@ func createLogger(cfg *config.Config) (*slog.Logger, error) {
 			return nil, err
 		}
 
-		handlers = append(handlers, syslogHandler)
+		handlers = append(handlers, handler.NamedHandler{Handler: syslogHandler, HandlerType: cfg.SyslogOutput.Label})
 	}
 
 	// Fallback to a basic console logger if no handlers are configured
 	if len(handlers) == 0 {
-		handlers = append(handlers, slog.NewTextHandler(os.Stdout, nil))
+		handlers = append(handlers, handler.NamedHandler{Handler: slog.NewTextHandler(os.Stdout, nil), HandlerType: cfg.ConsoleOutput.Label})
 	}
 
-	return slog.New(&LogDispatcher{handlers: handlers}), nil
+	return slog.New(NewLogStatsHandler(*cfg, handlers)), nil
 }
 
 // GetLogger returns the global logger. If `LogInit` is not called, it initializes the logger with default settings.
@@ -166,7 +210,8 @@ func GetLogger() *slog.Logger {
 
 // ContextAwareLogger wraps slog.Logger to support context-based logging
 type ContextAwareLogger struct {
-	logger *slog.Logger
+	logger      *slog.Logger
+	statHandler LogStatHandler
 }
 
 // GetContextLogger returns the global context logger. If `LogInit` is not called, it initializes the logger with default settings.
@@ -177,7 +222,7 @@ func GetContextLogger() *ContextAwareLogger {
 			panic("Failed to initialize default logger: " + err.Error())
 		}
 	}
-	return &ContextAwareLogger{logger: log}
+	return &ContextAwareLogger{logger: log, statHandler: log.Handler().(LogStatHandler)}
 }
 
 // NewContextAwareLogger creates a logger with context support by internally calling NewLogger
@@ -186,7 +231,12 @@ func NewContextAwareLogger(params ...interface{}) (*ContextAwareLogger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ContextAwareLogger{logger: newLogger}, err
+	return &ContextAwareLogger{logger: newLogger, statHandler: newLogger.Handler().(LogStatHandler)}, err
+}
+
+// SetErrorCallback
+func (l *ContextAwareLogger) SetErrorCallback(callback LogStatsCallback) {
+	l.statHandler.SetStatsCallbackHandler(callback)
 }
 
 // Log logs a message at the specified level with context attributes and additional attributes
@@ -242,52 +292,6 @@ func extractContextAttributes(ctx context.Context) []slog.Attr {
 		attrs = append(attrs, slog.String(k, v))
 	}
 	return attrs
-}
-
-// --- Handlers ---
-
-// LogDispatcher forwards logs to multiple handlers
-type LogDispatcher struct {
-	handlers []slog.Handler
-}
-
-// Required by slog.Handler interface: Determines if this dispatcher processes a log record at the given level
-func (d *LogDispatcher) Enabled(ctx context.Context, level slog.Level) bool {
-	for _, handler := range d.handlers {
-		if handler.Enabled(ctx, level) {
-			return true
-		}
-	}
-	return false
-}
-
-// Required by slog.Handler interface: Processes and forwards a log record to all handlers
-func (d *LogDispatcher) Handle(ctx context.Context, r slog.Record) error {
-	var errs []error
-	for _, handler := range d.handlers {
-		if err := handler.Handle(ctx, r); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errors.Join(errs...)
-}
-
-// Required by slog.Handler interface: Groups attributes under a namespace for all handlers
-func (d *LogDispatcher) WithGroup(name string) slog.Handler {
-	newHandlers := make([]slog.Handler, len(d.handlers))
-	for i, handler := range d.handlers {
-		newHandlers[i] = handler.WithGroup(name)
-	}
-	return &LogDispatcher{handlers: newHandlers}
-}
-
-// Required by slog.Handler interface: Adds attributes to all handlers
-func (d *LogDispatcher) WithAttrs(attrs []slog.Attr) slog.Handler {
-	newHandlers := make([]slog.Handler, len(d.handlers))
-	for i, handler := range d.handlers {
-		newHandlers[i] = handler.WithAttrs(attrs)
-	}
-	return &LogDispatcher{handlers: newHandlers}
 }
 
 // ColorConsoleHandler provides color-coded console logging

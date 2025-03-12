@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kibana-config
+  labels:
+    component: kibana
+data:
+  exports.ndjson: |
+    {"attributes":{"fieldAttrs":"{}","fields":"[]","runtimeFieldMap":"{}","timeFieldName":"@timestamp","title":"fluentd*","typeMeta":"{}"},"coreMigrationVersion":"7.17.27","id":"3e6ff380-e4c1-11ef-a39f-37f453f59f77","migrationVersion":{"index-pattern":"7.11.0"},"references":[],"type":"index-pattern","updated_at":"2025-02-07T19:59:18.735Z","version":"WzI0LDFd"}
+    {"attributes":{"description":"","hits":0,"kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"},"optionsJSON":"{\"useMargins\":true,\"syncColors\":false,\"hidePanelTitles\":false}","panelsJSON":"[{\"version\":\"7.17.27\",\"type\":\"lens\",\"gridData\":{\"x\":24,\"y\":0,\"w\":24,\"h\":15,\"i\":\"de15c2fe-16ee-4d8b-ad6b-36f4c851c460\"},\"panelIndex\":\"de15c2fe-16ee-4d8b-ad6b-36f4c851c460\",\"embeddableConfig\":{\"attributes\":{\"title\":\"\",\"visualizationType\":\"lnsPie\",\"type\":\"lens\",\"references\":[{\"id\":\"3e6ff380-e4c1-11ef-a39f-37f453f59f77\",\"name\":\"indexpattern-datasource-current-indexpattern\",\"type\":\"index-pattern\"},{\"id\":\"3e6ff380-e4c1-11ef-a39f-37f453f59f77\",\"name\":\"indexpattern-datasource-layer-41a7e5be-d2bc-4e3c-9be9-79faac57e6a6\",\"type\":\"index-pattern\"}],\"state\":{\"visualization\":{\"shape\":\"donut\",\"layers\":[{\"layerId\":\"41a7e5be-d2bc-4e3c-9be9-79faac57e6a6\",\"groups\":[\"c8bd03c4-70a3-4489-aa58-077ff58e62d5\"],\"metric\":\"7f0168d7-3bb7-4f5a-8180-7e840d351b79\",\"numberDisplay\":\"percent\",\"categoryDisplay\":\"default\",\"legendDisplay\":\"default\",\"nestedLegend\":false,\"layerType\":\"data\"}]},\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filters\":[],\"datasourceStates\":{\"indexpattern\":{\"layers\":{\"41a7e5be-d2bc-4e3c-9be9-79faac57e6a6\":{\"columns\":{\"c8bd03c4-70a3-4489-aa58-077ff58e62d5\":{\"label\":\"Top values of status.keyword\",\"dataType\":\"string\",\"operationType\":\"terms\",\"scale\":\"ordinal\",\"sourceField\":\"status.keyword\",\"isBucketed\":true,\"params\":{\"size\":5,\"orderBy\":{\"type\":\"column\",\"columnId\":\"7f0168d7-3bb7-4f5a-8180-7e840d351b79\"},\"orderDirection\":\"desc\",\"otherBucket\":true,\"missingBucket\":false}},\"7f0168d7-3bb7-4f5a-8180-7e840d351b79\":{\"label\":\"Count of records\",\"dataType\":\"number\",\"operationType\":\"count\",\"isBucketed\":false,\"scale\":\"ratio\",\"sourceField\":\"Records\"}},\"columnOrder\":[\"c8bd03c4-70a3-4489-aa58-077ff58e62d5\",\"7f0168d7-3bb7-4f5a-8180-7e840d351b79\"],\"incompleteColumns\":{}}}}}}},\"hidePanelTitles\":false,\"enhancements\":{}},\"title\":\"Response Code Ratio\"},{\"version\":\"7.17.27\",\"type\":\"visualization\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"3b2a26b3-ff04-4107-9b98-d2b4c0fdbe08\"},\"panelIndex\":\"3b2a26b3-ff04-4107-9b98-d2b4c0fdbe08\",\"embeddableConfig\":{\"savedVis\":{\"id\":\"\",\"title\":\"\",\"description\":\"\",\"type\":\"metrics\",\"params\":{\"time_range_mode\":\"entire_time_range\",\"id\":\"9f2b4d7e-e963-41b2-9d8d-be9fbef4c198\",\"type\":\"timeseries\",\"series\":[{\"time_range_mode\":\"entire_time_range\",\"id\":\"0a988d8d-f413-4dbc-8832-a4c71cd2f169\",\"color\":\"#68BC00\",\"split_mode\":\"terms\",\"palette\":{\"type\":\"palette\",\"name\":\"default\"},\"metrics\":[{\"unit\":\"\",\"id\":\"85ada648-d4f2-4ad7-9fa1-c59fd0b9115a\",\"type\":\"count\",\"numerator\":{\"query\":\"\",\"language\":\"kuery\"}}],\"separate_axis\":0,\"axis_position\":\"right\",\"formatter\":\"default\",\"chart_type\":\"line\",\"line_width\":\"3\",\"point_size\":\"3\",\"fill\":\"0.5\",\"stacked\":\"percent\",\"override_index_pattern\":0,\"series_drop_last_bucket\":0,\"label\":\"\",\"terms_field\":\"status.keyword\"}],\"time_field\":\"\",\"index_pattern\":\"\",\"use_kibana_indexes\":true,\"interval\":\"\",\"axis_position\":\"left\",\"axis_formatter\":\"number\",\"axis_scale\":\"normal\",\"show_legend\":1,\"truncate_legend\":1,\"max_lines_legend\":1,\"show_grid\":1,\"tooltip_mode\":\"show_all\",\"drop_last_bucket\":0,\"isModelInvalid\":false},\"uiState\":{},\"data\":{\"aggs\":[],\"searchSource\":{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}}},\"hidePanelTitles\":false,\"enhancements\":{}},\"title\":\"Status Code Ratio over Time\"}]","timeRestore":false,"title":"Response Status Codes","version":1},"coreMigrationVersion":"7.17.27","id":"9d17e930-e4dd-11ef-9511-f9823356b2ec","migrationVersion":{"dashboard":"7.17.3"},"references":[{"id":"3e6ff380-e4c1-11ef-a39f-37f453f59f77","name":"de15c2fe-16ee-4d8b-ad6b-36f4c851c460:indexpattern-datasource-current-indexpattern","type":"index-pattern"},{"id":"3e6ff380-e4c1-11ef-a39f-37f453f59f77","name":"de15c2fe-16ee-4d8b-ad6b-36f4c851c460:indexpattern-datasource-layer-41a7e5be-d2bc-4e3c-9be9-79faac57e6a6","type":"index-pattern"}],"type":"dashboard","updated_at":"2025-02-07T20:13:19.587Z","version":"WzMzOSwxXQ=="}
+    {"excludedObjects":[],"excludedObjectsCount":0,"exportedCount":2,"missingRefCount":0,"missingReferences":[]}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  labels:
+    component: kibana
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      component: kibana
+  template:
+    metadata:
+      labels:
+        component: kibana
+    spec:
+      containers:
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:7.17.27
+          ports:
+            - containerPort: 5601
+          env:
+            - name: ELASTICSEARCH_URL
+              value: 'http://elasticsearch.elastic.svc.cluster.local:9200'
+          resources:
+            requests:
+              memory: 500Mi
+              cpu: '0.5'
+            limits:
+              memory: 2Gi
+              cpu: '2'
+        - name: configure-kibana
+          image: curlimages/curl
+          resources:
+            requests:
+              memory: 100Mi
+              cpu: '0.1'
+            limits:
+              memory: 100Mi
+              cpu: '0.1'
+          command:
+          - sh
+          - -c
+          - |
+            CODE=1
+            while [ $CODE -ne 0 ]; do
+              curl 'http://kibana.elastic.svc.cluster.local:5601/api/saved_objects/_import?overwrite=true' \
+                -X POST -H 'kbn-version: 7.17.27' \
+                -F file=@/config/exports.ndjson
+              CODE=$?
+              sleep 5
+            done
+            sleep infinity
+          volumeMounts:
+            - name: kibana-config
+              mountPath: /config
+      volumes:
+        - name: kibana-config
+          configMap:
+            name: kibana-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  labels:
+    component: kibana
+spec:
+  ports:
+  - port: 5601
+  selector:
+    component: kibana

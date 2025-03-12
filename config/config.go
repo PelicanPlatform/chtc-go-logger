@@ -3,7 +3,10 @@ package config
 import (
 	"bytes"
 	_ "embed"
+	"os"
 	"reflect"
+	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -14,12 +17,14 @@ import (
 var defaultYAML []byte
 
 type ConsoleOutputConfig struct {
-	Enabled    bool `mapstructure:"enabled"`     // Enable or disable console output
-	JSONOutput bool `mapstructure:"json_object"` // If true, output JSON objects; disables colors
-	Colors     bool `mapstructure:"colors"`      // Enable color-coded logs (ignored if JSONOutput is true)
+	Label      string `mapstructure:"label"`       // Label for the handler when reporting logging stats
+	Enabled    bool   `mapstructure:"enabled"`     // Enable or disable console output
+	JSONOutput bool   `mapstructure:"json_object"` // If true, output JSON objects; disables colors
+	Colors     bool   `mapstructure:"colors"`      // Enable color-coded logs (ignored if JSONOutput is true)
 }
 
 type FileOutputConfig struct {
+	Label       string `mapstructure:"label"`         // Label for the handler when reporting logging stats
 	Enabled     bool   `mapstructure:"enabled"`       // Enable or disable file output
 	FilePath    string `mapstructure:"file_path"`     // Path to the log file
 	MaxFileSize int    `mapstructure:"max_file_size"` // Max file size in MB
@@ -27,17 +32,33 @@ type FileOutputConfig struct {
 	MaxAgeDays  int    `mapstructure:"max_age_days"`  // Maximum age of log files in days
 }
 type SyslogOutputConfig struct {
+	Label      string `mapstructure:"label"`       // Label for the handler when reporting logging stats
 	Enabled    bool   `mapstructure:"enabled"`     // Enable or disable syslog output
 	Network    string `mapstructure:"network"`     // Network over which to connect to syslog, default empty for local daemon
 	Addr       string `mapstructure:"addr"`        // Address of remote syslog server, if any
 	JSONOutput bool   `mapstructure:"json_object"` // If true, output JSON objects
 }
 
+type HealthCheckConfig struct {
+	Enabled                  bool          `mapstructure:"enabled"`
+	LogPeriodicity           time.Duration `mapstructure:"log_periodicity"`
+	ElasticsearchPeriodicity time.Duration `mapstructure:"elasticsearch_periodicity"`
+	ElasticsearchIndex       string        `mapstructure:"elasticsearch_index"`
+	ElasticsearchURL         string        `mapstructure:"elasticsearch_url"`
+}
+
+type SequenceConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`       // Enable or disable sequence logging
+	IdKey       string `mapstructure:"logger_id_key"` // The key to log the logger's unique ID under
+	SequenceKey string `mapstructure:"sequence_key"`  // The key to log the logger's message sequence number under
+}
 type Config struct {
 	LogLevel      string              `mapstructure:"log_level"`      // Log level (e.g., DEBUG, INFO, WARN, ERROR)
 	ConsoleOutput ConsoleOutputConfig `mapstructure:"console_output"` // Console output settings
 	FileOutput    FileOutputConfig    `mapstructure:"file_output"`    // File output settings
 	SyslogOutput  SyslogOutputConfig  `mapstructure:"syslog_output"`  // Syslog output settings
+	HealthCheck   HealthCheckConfig   `mapstructure:"health_check"`   // Health Check Settings
+	SequenceInfo  SequenceConfig      `mapstructure:"sequence_info"`  // Include info about sequence of log message
 }
 
 // LoadConfig loads and merges the configuration in this order:
@@ -62,9 +83,8 @@ func LoadConfig(configFile string, overrides *Config) (*Config, error) {
 		}
 	}
 
-	// Load environment variables
-	v.SetEnvPrefix("LOGGER")
-	v.AutomaticEnv()
+	// Manually load environment variables
+	ManuallyLoadEnvVariables(v, "LOGGER")
 
 	// Parse into Config struct
 	config := &Config{}
@@ -97,6 +117,29 @@ func ApplyOverrides(config, overrides interface{}) {
 		} else if !overrideField.IsZero() {
 			// If the field is not zero, override the value
 			configField.Set(overrideField)
+		}
+	}
+}
+
+// ManuallyLoadEnvVariables scans and loads all environment variables with the given prefix into Viper.
+func ManuallyLoadEnvVariables(v *viper.Viper, prefix string) {
+	prefix = strings.ToUpper(prefix) + "__" // Ensure prefix is uppercase
+
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		key, value := parts[0], parts[1]
+
+		if strings.HasPrefix(key, prefix) {
+			// Remove the prefix
+			keyWithoutPrefix := strings.TrimPrefix(key, prefix)
+
+			// Convert key to Viper-compatible format:
+			// - Replace "__" with "." for nested structures
+			// - Convert to lowercase (Viper's default behavior)
+			viperKey := strings.ToLower(strings.ReplaceAll(keyWithoutPrefix, "__", "."))
+
+			v.Set(viperKey, value)
+
 		}
 	}
 }
