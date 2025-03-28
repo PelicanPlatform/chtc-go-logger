@@ -1,4 +1,8 @@
 services:
+  fluentd:
+    image: hub.opensciencegrid.org/mwestphall/go-log-client
+    build:
+      context: .
   tests:
     shm_size: 24576
     build:

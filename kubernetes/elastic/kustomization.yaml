@@ -1,0 +1,19 @@
+namespace: elastic
+
+resources:
+  - namespace.yaml
+  - elastic.yaml
+  - fluentd.yaml
+  - grafana.yaml
+  - kibana.yaml
+
+configMapGenerator:
+  - name: grafana-es-config
+    files:
+      - elastic-ds.yaml
+  - name: grafana-dashboard-config
+    files:
+      - dashboard-sources.yaml
+  - name: grafana-dashboards
+    files:
+      - dashboard.yaml

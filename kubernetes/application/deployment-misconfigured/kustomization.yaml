@@ -1,0 +1,7 @@
+namePrefix: next-
+
+resources:
+- ../deployment
+
+patches:
+- path: deployment-patch.yaml
