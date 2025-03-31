@@ -51,9 +51,12 @@ func main() {
 	case "burst":
 		log.Info("Running in BURST mode (default)")
 		runBurstMode()
+	case "adapt":
+		log.Info("Running in ADAPT mode")
+		runAdaptMode()
 	default:
 		log.Error("Invalid mode provided",
-			slog.String("expected", "stream | burst"),
+			slog.String("expected", "stream | burst | adapt"),
 			slog.String("received", mode),
 		)
 	}
@@ -161,7 +164,7 @@ func panicOnLowDisk(logStats logger.LogStats) {
 func init() {
 	overrideConfig := config.Config{
 		FileOutput: config.FileOutputConfig{
-			FilePath: "/var/log/chtc-logger.log",
+			FilePath: "/tmp/chtc-logger.log",
 		},
 		HealthCheck: config.HealthCheckConfig{
 			Enabled:                  true,
